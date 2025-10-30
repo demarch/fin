@@ -77,13 +77,17 @@ export const recalculateMonthSaldos = (
 
     // Log detalhado do primeiro dia para debug
     if (index === 0) {
-      console.log('[Calculations] Dia 1:', {
-        saldoAnterior: currentSaldo,
+      console.log('[Calculations] 📊 PRIMEIRO DIA DO MÊS:', {
+        saldoHerdadoMesAnterior: currentSaldo,
         entrada,
         saida,
         diario,
+        formula: 'saldo = saldoAnterior + entrada - saida - diario',
         calculo: `${currentSaldo} + ${entrada} - ${saida} - ${diario} = ${novoSaldo}`,
         resultado: novoSaldo,
+        confirmacao: currentSaldo === 0
+          ? '✅ Primeiro mês do sistema ou mês anterior zerado'
+          : `✅ Herdou R$ ${currentSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} do último dia do mês anterior`
       });
     }
 

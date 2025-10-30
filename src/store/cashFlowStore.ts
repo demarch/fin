@@ -234,13 +234,25 @@ export const useCashFlowStore = create<CashFlowStore>()(
           saldoInicial = 0;
         }
 
-        console.log(`[CashFlow] getSaldoInicial(${monthStr}):`, {
-          prevMonthStr,
-          prevMonthExists: !!prevMonth,
-          saldoInicial,
-          prevMonthSaldoFinal: prevMonth?.totals.saldoFinal,
-          wasReset: Math.abs(prevMonth?.totals.saldoFinal || 0) > LIMITE_ABSURDO,
-        });
+        // Log detalhado para debug
+        if (prevMonth) {
+          const ultimoDia = prevMonth.entries[prevMonth.entries.length - 1];
+          console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
+            mesAnterior: prevMonthStr,
+            ultimoDiaMesAnterior: ultimoDia?.day,
+            saldoUltimoDia: ultimoDia?.saldo,
+            saldoFinalTotals: prevMonth.totals.saldoFinal,
+            saldoInicialHerdado: saldoInicial,
+            confirmacao: `✅ Dia ${ultimoDia?.day}/${prevMonthStr} (R$ ${ultimoDia?.saldo?.toLocaleString('pt-BR')}) → Dia 1/${monthStr} (R$ ${saldoInicial.toLocaleString('pt-BR')})`
+          });
+        } else {
+          console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
+            mesAnterior: prevMonthStr,
+            existe: false,
+            saldoInicial: 0,
+            confirmacao: '✅ Primeiro mês - iniciando com R$ 0'
+          });
+        }
 
         return saldoInicial;
       },
@@ -321,7 +333,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
     }),
     {
       name: 'cashflow-storage',
-      version: 3, // 🔧 VERSÃO 3 - Correção crítica de conversão de tipos
+      version: 4, // 🔧 VERSÃO 4 - Correção de saldo inicial entre meses + validação rigorosa
     }
   )
 );

@@ -20,6 +20,7 @@ interface CashFlowStore {
   getCurrentMonthData: () => MonthlyData | undefined;
   clearAllData: () => void;
   deleteMonth: (monthStr: string) => void;
+  sanitizeAllMonths: () => void;
 }
 
 export const useCashFlowStore = create<CashFlowStore>()(
@@ -168,13 +169,30 @@ export const useCashFlowStore = create<CashFlowStore>()(
         const prevMonthStr = formatMonthString(date);
 
         const prevMonth = get().months[prevMonthStr];
-        const saldoInicial = prevMonth?.totals.saldoFinal || 0;
+        let saldoInicial = prevMonth?.totals.saldoFinal || 0;
+
+        // 🔒 VALIDAÇÃO: Detectar e corrigir saldos absurdos
+        const LIMITE_ABSURDO = 10000000; // R$ 10 milhões
+        if (Math.abs(saldoInicial) > LIMITE_ABSURDO) {
+          console.error(`[CashFlow] ⚠️ SALDO INICIAL ABSURDO DETECTADO: ${saldoInicial}`);
+          console.error(`[CashFlow] Forçando saldo inicial para 0 e deletando mês corrompido ${prevMonthStr}`);
+
+          // Deletar mês anterior corrompido
+          if (prevMonth) {
+            const newMonths = { ...get().months };
+            delete newMonths[prevMonthStr];
+            set({ months: newMonths });
+          }
+
+          saldoInicial = 0;
+        }
 
         console.log(`[CashFlow] getSaldoInicial(${monthStr}):`, {
           prevMonthStr,
           prevMonthExists: !!prevMonth,
           saldoInicial,
           prevMonthSaldoFinal: prevMonth?.totals.saldoFinal,
+          wasReset: Math.abs(prevMonth?.totals.saldoFinal || 0) > LIMITE_ABSURDO,
         });
 
         return saldoInicial;
@@ -203,10 +221,60 @@ export const useCashFlowStore = create<CashFlowStore>()(
         set({ months: newMonths });
         console.log(`[CashFlow] Mês ${monthStr} deletado!`);
       },
+
+      sanitizeAllMonths: () => {
+        console.log('[CashFlow] 🔧 Iniciando saneamento de todos os meses...');
+        const state = get();
+        const monthKeys = Object.keys(state.months).sort();
+
+        if (monthKeys.length === 0) {
+          console.log('[CashFlow] Nenhum mês para sanear.');
+          return;
+        }
+
+        const LIMITE_ABSURDO = 10000000; // R$ 10 milhões
+        let corrigidos = 0;
+        let deletados = 0;
+
+        // Percorrer meses em ordem cronológica
+        const newMonths: Record<string, MonthlyData> = {};
+        let saldoAcumulado = 0;
+
+        monthKeys.forEach((monthKey) => {
+          const monthData = state.months[monthKey];
+
+          // Verificar se o mês tem saldo absurdo
+          if (Math.abs(monthData.totals.saldoFinal) > LIMITE_ABSURDO) {
+            console.warn(`[CashFlow] ⚠️ Mês ${monthKey} com saldo absurdo (${monthData.totals.saldoFinal}), deletando...`);
+            deletados++;
+            return; // Pula este mês
+          }
+
+          // Recalcular este mês com saldo inicial correto
+          const entriesWithSaldo = recalculateMonthSaldos(monthData.entries, saldoAcumulado);
+          const totals = calculateMonthTotals(entriesWithSaldo);
+
+          newMonths[monthKey] = {
+            ...monthData,
+            entries: entriesWithSaldo,
+            totals,
+          };
+
+          saldoAcumulado = totals.saldoFinal;
+          corrigidos++;
+        });
+
+        set({ months: newMonths });
+
+        console.log(`[CashFlow] ✅ Saneamento concluído:`);
+        console.log(`  - ${corrigidos} meses corrigidos`);
+        console.log(`  - ${deletados} meses deletados`);
+        console.log(`  - Saldo final acumulado: ${saldoAcumulado}`);
+      },
     }),
     {
       name: 'cashflow-storage',
-      version: 1,
+      version: 2, // Incrementada para invalidar cache corrompido
     }
   )
 );

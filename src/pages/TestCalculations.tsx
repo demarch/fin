@@ -4,7 +4,7 @@ import { formatCurrency } from '../utils/formatters';
 import Card from '../components/common/Card';
 
 export default function TestCalculations() {
-  const { months, updateDailyEntry, initializeMonth, clearAllData, deleteMonth, getSaldoInicial } = useCashFlowStore();
+  const { months, updateDailyEntry, initializeMonth, clearAllData, deleteMonth, getSaldoInicial, sanitizeAllMonths } = useCashFlowStore();
   const [testMonth] = useState('2025-01');
 
   // Inicializar mês de teste
@@ -46,6 +46,13 @@ export default function TestCalculations() {
     }
   };
 
+  const handleSanitize = () => {
+    if (window.confirm('Deseja SANEAR todos os dados? Isso irá recalcular todos os meses do zero e deletar meses corrompidos.')) {
+      sanitizeAllMonths();
+      window.location.reload();
+    }
+  };
+
   if (!monthData) {
     return <div>Carregando...</div>;
   }
@@ -82,6 +89,13 @@ export default function TestCalculations() {
               className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600"
             >
               Executar Teste
+            </button>
+
+            <button
+              onClick={handleSanitize}
+              className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+            >
+              🔧 Sanear Dados
             </button>
 
             <button

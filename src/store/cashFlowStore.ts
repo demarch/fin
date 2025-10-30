@@ -18,6 +18,8 @@ interface CashFlowStore {
   setCurrentMonth: (monthStr: string) => void;
   getSaldoInicial: (monthStr: string) => number;
   getCurrentMonthData: () => MonthlyData | undefined;
+  clearAllData: () => void;
+  deleteMonth: (monthStr: string) => void;
 }
 
 export const useCashFlowStore = create<CashFlowStore>()(
@@ -166,12 +168,40 @@ export const useCashFlowStore = create<CashFlowStore>()(
         const prevMonthStr = formatMonthString(date);
 
         const prevMonth = get().months[prevMonthStr];
-        return prevMonth?.totals.saldoFinal || 0;
+        const saldoInicial = prevMonth?.totals.saldoFinal || 0;
+
+        console.log(`[CashFlow] getSaldoInicial(${monthStr}):`, {
+          prevMonthStr,
+          prevMonthExists: !!prevMonth,
+          saldoInicial,
+          prevMonthSaldoFinal: prevMonth?.totals.saldoFinal,
+        });
+
+        return saldoInicial;
       },
 
       getCurrentMonthData: () => {
         const state = get();
         return state.months[state.currentMonth];
+      },
+
+      clearAllData: () => {
+        console.log('[CashFlow] Limpando todos os dados...');
+        set({
+          months: {},
+          currentMonth: formatMonthString(new Date()),
+        });
+        localStorage.removeItem('cashflow-storage');
+        console.log('[CashFlow] Dados limpos com sucesso!');
+      },
+
+      deleteMonth: (monthStr: string) => {
+        console.log(`[CashFlow] Deletando mês ${monthStr}...`);
+        const state = get();
+        const newMonths = { ...state.months };
+        delete newMonths[monthStr];
+        set({ months: newMonths });
+        console.log(`[CashFlow] Mês ${monthStr} deletado!`);
       },
     }),
     {

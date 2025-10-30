@@ -4,6 +4,7 @@ import { useCashFlowStore } from '../store/cashFlowStore';
 import { formatMonthString, parseMonthString } from '../utils/formatters';
 import MonthGrid from '../components/cashflow/MonthGrid';
 import Card from '../components/common/Card';
+import { EmergencyReset } from '../components/cashflow/EmergencyReset';
 
 export default function CashFlow() {
   const {
@@ -177,6 +178,9 @@ export default function CashFlow() {
           </p>
         </div>
       </div>
+
+      {/* Emergency Reset Button - Fixed Position */}
+      <EmergencyReset />
     </div>
   );
 }

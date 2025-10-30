@@ -47,6 +47,17 @@ export const formatMonthString = (date: Date): string => {
  * Parse de valor monetário brasileiro para número
  */
 export const parseCurrency = (value: string): number => {
-  const cleaned = value.replace(/[^\d,.-]/g, '').replace(',', '.');
-  return parseFloat(cleaned) || 0;
+  if (!value || value.trim() === '') return 0;
+
+  // Remove tudo exceto dígitos, vírgula e ponto
+  let cleaned = value.replace(/[^\d,.-]/g, '');
+
+  // Se tem vírgula, considera como separador decimal brasileiro
+  if (cleaned.includes(',')) {
+    // Remove pontos (separadores de milhares) e substitui vírgula por ponto
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  }
+
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
 };

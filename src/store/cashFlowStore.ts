@@ -66,14 +66,28 @@ export const useCashFlowStore = create<CashFlowStore>()(
           return get().updateDailyEntry(monthStr, day, field, value);
         }
 
-        const updatedEntries = monthData.entries.map((entry) =>
-          entry.day === day ? { ...entry, [field]: value } : entry
-        );
+        // Não permitir atualizar o campo 'saldo' diretamente - ele é calculado
+        if (field === 'saldo') {
+          return;
+        }
 
+        // Atualizar apenas o campo específico do dia específico
+        const updatedEntries = monthData.entries.map((entry) => {
+          if (entry.day === day) {
+            return {
+              ...entry,
+              [field]: value,
+            };
+          }
+          return entry;
+        });
+
+        // Recalcular saldos a partir do saldo inicial do mês
         const saldoInicial = get().getSaldoInicial(monthStr);
         const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
         const totals = calculateMonthTotals(entriesWithSaldo);
 
+        // Atualizar o mês atual
         set((state) => ({
           months: {
             ...state.months,
@@ -85,28 +99,37 @@ export const useCashFlowStore = create<CashFlowStore>()(
           },
         }));
 
-        // Recalculate next months if they exist
-        const date = new Date(monthStr + '-01');
-        date.setMonth(date.getMonth() + 1);
-        const nextMonthStr = formatMonthString(date);
+        // Recalcular todos os meses subsequentes
+        const recalculateNextMonths = (currentMonthStr: string, currentSaldoFinal: number) => {
+          const date = new Date(currentMonthStr + '-01');
+          date.setMonth(date.getMonth() + 1);
+          const nextMonthStr = formatMonthString(date);
 
-        if (state.months[nextMonthStr]) {
-          const nextMonthData = state.months[nextMonthStr];
-          const nextSaldoInicial = totals.saldoFinal;
-          const nextEntriesWithSaldo = recalculateMonthSaldos(nextMonthData.entries, nextSaldoInicial);
-          const nextTotals = calculateMonthTotals(nextEntriesWithSaldo);
+          const nextMonthData = get().months[nextMonthStr];
+          if (nextMonthData) {
+            const nextEntriesWithSaldo = recalculateMonthSaldos(
+              nextMonthData.entries,
+              currentSaldoFinal
+            );
+            const nextTotals = calculateMonthTotals(nextEntriesWithSaldo);
 
-          set((state) => ({
-            months: {
-              ...state.months,
-              [nextMonthStr]: {
-                ...nextMonthData,
-                entries: nextEntriesWithSaldo,
-                totals: nextTotals,
+            set((state) => ({
+              months: {
+                ...state.months,
+                [nextMonthStr]: {
+                  ...nextMonthData,
+                  entries: nextEntriesWithSaldo,
+                  totals: nextTotals,
+                },
               },
-            },
-          }));
-        }
+            }));
+
+            // Recursivamente recalcular o próximo mês
+            recalculateNextMonths(nextMonthStr, nextTotals.saldoFinal);
+          }
+        };
+
+        recalculateNextMonths(monthStr, totals.saldoFinal);
       },
 
       setCurrentMonth: (monthStr: string) => {

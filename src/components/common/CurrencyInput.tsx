@@ -27,7 +27,8 @@ export default function CurrencyInput({
 
   const handleDoubleClick = () => {
     setIsEditing(true);
-    setInputValue(value.toString());
+    // Se o valor for 0, deixar vazio para facilitar a digitação
+    setInputValue(value === 0 ? '' : value.toString());
   };
 
   const handleBlur = () => {

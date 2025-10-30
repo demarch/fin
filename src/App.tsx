@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import CashFlow from './pages/CashFlow';
 import Loans from './pages/Loans';
 import Settings from './pages/Settings';
+import TestCalculations from './pages/TestCalculations';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/fluxo-caixa" element={<CashFlow />} />
           <Route path="/emprestimos" element={<Loans />} />
           <Route path="/configuracoes" element={<Settings />} />
+          <Route path="/test" element={<TestCalculations />} />
         </Routes>
       </div>
     </Router>

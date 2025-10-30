@@ -274,7 +274,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
     }),
     {
       name: 'cashflow-storage',
-      version: 2, // Incrementada para invalidar cache corrompido
+      version: 3, // 🔧 VERSÃO 3 - Correção crítica de conversão de tipos
     }
   )
 );

@@ -32,28 +32,36 @@ export const useCashFlowStore = create<CashFlowStore>()(
       initializeMonth: (monthStr: string) => {
         const state = get();
 
-        // Se o mês já existe, valida antes de retornar
+        // Se o mês já existe, SEMPRE valida e recalcula se necessário
         if (state.months[monthStr]) {
           const existingMonth = state.months[monthStr];
           const LIMITE_ABSURDO = 100000; // R$ 100 mil
 
-          // Verifica se tem saldos absurdos
-          const primeiroSaldo = existingMonth.entries[0]?.saldo || 0;
-          const saldoFinal = existingMonth.totals.saldoFinal || 0;
+          // Verifica se tem saldos absurdos em QUALQUER entrada
+          const temSaldoAbsurdo = existingMonth.entries.some(e => Math.abs(e.saldo) > LIMITE_ABSURDO);
+          const saldoFinalAbsurdo = Math.abs(existingMonth.totals.saldoFinal) > LIMITE_ABSURDO;
 
-          if (Math.abs(primeiroSaldo) > LIMITE_ABSURDO || Math.abs(saldoFinal) > LIMITE_ABSURDO) {
-            console.error(`[CashFlow] 🚨 Mês ${monthStr} existente com saldo absurdo detectado!`);
-            console.error(`[CashFlow] Primeiro saldo: ${primeiroSaldo}, Saldo final: ${saldoFinal}`);
+          if (temSaldoAbsurdo || saldoFinalAbsurdo) {
+            console.error(`[CashFlow] 🚨 Mês ${monthStr} com saldos absurdos detectado!`);
+            console.error(`[CashFlow] Alguns saldos:`, existingMonth.entries.slice(0, 3).map(e => e.saldo));
+            console.error(`[CashFlow] Saldo final: ${existingMonth.totals.saldoFinal}`);
+            console.error(`[CashFlow] 🔧 FORÇANDO RECÁLCULO COMPLETO COM SALDO INICIAL CORRETO`);
 
-            // Recalcula o mês com saldo inicial seguro
+            // Obter saldo inicial correto (já validado)
             const saldoInicialSeguro = get().getSaldoInicial(monthStr);
-            const entriesCorrigidas = recalculateMonthSaldos(
-              existingMonth.entries.map(e => ({ ...e })),
-              saldoInicialSeguro
-            );
+
+            console.log(`[CashFlow] Saldo inicial seguro obtido: R$ ${saldoInicialSeguro}`);
+
+            // Limpar saldos e recalcular do zero
+            const entriesLimpas = existingMonth.entries.map(e => ({
+              ...e,
+              saldo: 0, // Zerar saldos corrompidos
+            }));
+
+            const entriesCorrigidas = recalculateMonthSaldos(entriesLimpas, saldoInicialSeguro);
             const totalsCorrigidos = calculateMonthTotals(entriesCorrigidas);
 
-            // Atualiza com valores corrigidos
+            // Atualizar com valores corrigidos
             set((state) => ({
               months: {
                 ...state.months,
@@ -65,7 +73,10 @@ export const useCashFlowStore = create<CashFlowStore>()(
               },
             }));
 
-            console.log(`[CashFlow] ✅ Mês ${monthStr} recalculado automaticamente`);
+            console.log(`[CashFlow] ✅ Mês ${monthStr} RECALCULADO:`);
+            console.log(`  - Saldo inicial: R$ ${saldoInicialSeguro}`);
+            console.log(`  - Novo saldo final: R$ ${totalsCorrigidos.saldoFinal}`);
+            console.log(`  - Primeiros saldos:`, entriesCorrigidas.slice(0, 3).map(e => e.saldo));
           }
 
           return; // Month already exists (e foi validado/corrigido se necessário)
@@ -206,31 +217,46 @@ export const useCashFlowStore = create<CashFlowStore>()(
         const prevMonthStr = formatMonthString(date);
 
         const prevMonth = get().months[prevMonthStr];
-        let saldoInicial = prevMonth?.totals.saldoFinal || 0;
 
         // 🔒 VALIDAÇÃO RIGOROSA: Detectar e corrigir saldos absurdos
         // Limite reduzido para R$ 100.000 para pegar valores como R$ 6.790.750
         const LIMITE_ABSURDO = 100000; // R$ 100 mil
-        if (Math.abs(saldoInicial) > LIMITE_ABSURDO) {
-          console.error(`[CashFlow] 🚨 SALDO INICIAL ABSURDO DETECTADO: R$ ${saldoInicial.toLocaleString('pt-BR')}`);
-          console.error(`[CashFlow] Mês anterior corrompido: ${prevMonthStr}`);
-          console.error(`[CashFlow] 🔧 Forçando saldo inicial para 0 e deletando mês corrompido`);
 
-          // Alertar o usuário
-          if (typeof window !== 'undefined') {
-            alert(`⚠️ Detectado saldo incorreto de R$ ${Math.abs(saldoInicial).toLocaleString('pt-BR', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })} vindo de ${prevMonthStr}.\n\nValor será resetado para evitar propagação do erro.`);
-          }
+        // Primeiro, verificar se o mês anterior tem saldos absurdos
+        if (prevMonth) {
+          const saldoFinalAbsurdo = Math.abs(prevMonth.totals.saldoFinal) > LIMITE_ABSURDO;
+          const algumaEntradaAbsurda = prevMonth.entries.some(e => Math.abs(e.saldo) > LIMITE_ABSURDO);
 
-          // Deletar mês anterior corrompido
-          if (prevMonth) {
+          if (saldoFinalAbsurdo || algumaEntradaAbsurda) {
+            console.error(`[CashFlow] 🚨 MÊS ANTERIOR CORROMPIDO DETECTADO: ${prevMonthStr}`);
+            console.error(`[CashFlow] Saldo final absurdo: R$ ${prevMonth.totals.saldoFinal.toLocaleString('pt-BR')}`);
+            console.error(`[CashFlow] 🔧 Deletando mês corrompido e retornando saldo inicial ZERO`);
+
+            // Deletar mês corrompido
             const newMonths = { ...get().months };
             delete newMonths[prevMonthStr];
             set({ months: newMonths });
-          }
 
+            // Alertar o usuário
+            if (typeof window !== 'undefined') {
+              alert(`⚠️ Mês ${prevMonthStr} estava corrompido com valores absurdos.\n\n` +
+                    `Foi detectado saldo de R$ ${Math.abs(prevMonth.totals.saldoFinal).toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}.\n\n` +
+                    `O mês foi deletado e o saldo inicial será ZERO.`);
+            }
+
+            return 0; // Retornar zero imediatamente
+          }
+        }
+
+        // Se não há mês anterior ou foi deletado, retornar 0
+        let saldoInicial = prevMonth?.totals.saldoFinal || 0;
+
+        // Validação adicional do saldo inicial
+        if (Math.abs(saldoInicial) > LIMITE_ABSURDO) {
+          console.error(`[CashFlow] 🚨 SALDO INICIAL ABSURDO: R$ ${saldoInicial.toLocaleString('pt-BR')}`);
           saldoInicial = 0;
         }
 
@@ -333,7 +359,33 @@ export const useCashFlowStore = create<CashFlowStore>()(
     }),
     {
       name: 'cashflow-storage',
-      version: 4, // 🔧 VERSÃO 4 - Correção de saldo inicial entre meses + validação rigorosa
+      version: 5, // 🔧 VERSÃO 5 - Correção definitiva de saldos absurdos com detecção e limpeza automática
+      migrate: (persistedState: any) => {
+        // Ao migrar para versão 5, forçar validação de todos os meses
+        if (persistedState?.months) {
+          const LIMITE_ABSURDO = 100000;
+          const monthsCorrigidos: Record<string, any> = {};
+
+          Object.entries(persistedState.months).forEach(([monthKey, monthData]: [string, any]) => {
+            // Verificar se o mês tem valores absurdos
+            const temValorAbsurdo = monthData.entries?.some((e: any) => Math.abs(e.saldo) > LIMITE_ABSURDO) ||
+                                   Math.abs(monthData.totals?.saldoFinal || 0) > LIMITE_ABSURDO;
+
+            if (temValorAbsurdo) {
+              console.log(`[Migration v5] Mês ${monthKey} com valores absurdos será excluído`);
+              // Não incluir este mês na migração
+            } else {
+              monthsCorrigidos[monthKey] = monthData;
+            }
+          });
+
+          return {
+            ...persistedState,
+            months: monthsCorrigidos,
+          };
+        }
+        return persistedState;
+      },
     }
   )
 );

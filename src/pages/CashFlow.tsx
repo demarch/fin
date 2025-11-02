@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useCashFlowStore } from '../store/cashFlowStore';
 import { formatMonthString, parseMonthString } from '../utils/formatters';
@@ -22,6 +22,11 @@ export default function CashFlow() {
     initializeMonth(currentMonth);
   }, [currentMonth, initializeMonth]);
 
+  // Calcular saldoInicial com useMemo para evitar recálculos desnecessários
+  const saldoInicial = useMemo(() => {
+    return getSaldoInicial(currentMonth);
+  }, [currentMonth, getSaldoInicial]);
+
   const handlePreviousMonth = () => {
     const date = parseMonthString(currentMonth);
     date.setMonth(date.getMonth() - 1);
@@ -40,8 +45,6 @@ export default function CashFlow() {
     const today = formatMonthString(new Date());
     setCurrentMonth(today);
   };
-
-  const saldoInicial = getSaldoInicial(currentMonth);
 
   if (!monthData) {
     return (

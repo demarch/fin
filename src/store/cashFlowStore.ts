@@ -117,9 +117,10 @@ export const useCashFlowStore = create<CashFlowStore>()(
         if (!monthData) {
           console.log(`[CashFlow] Mês ${monthStr} não existe, inicializando...`);
           get().initializeMonth(monthStr);
-          setTimeout(() => {
+          // Tentar novamente após inicialização
+          requestAnimationFrame(() => {
             get().updateDailyEntry(monthStr, day, field, value);
-          }, 0);
+          });
           return;
         }
 
@@ -129,81 +130,132 @@ export const useCashFlowStore = create<CashFlowStore>()(
           return;
         }
 
-        // Verificar valor anterior
-        const oldEntry = monthData.entries.find(e => e.day === day);
-        console.log(`[CashFlow] Valor anterior do dia ${day}:`, oldEntry);
+        // Validar o valor de entrada
+        if (isNaN(value) || !isFinite(value)) {
+          console.error(`[CashFlow] Valor inválido: ${value}`);
+          return;
+        }
 
-        // Criar nova cópia do array de entradas com a atualização
+        // Limitar valores extremos
+        const MAX_ALLOWED_VALUE = 10000000; // 10 milhões
+        if (Math.abs(value) > MAX_ALLOWED_VALUE) {
+          console.error(`[CashFlow] Valor muito alto: ${value}. Limitando a ${MAX_ALLOWED_VALUE}`);
+          value = Math.sign(value) * MAX_ALLOWED_VALUE;
+        }
+
+        // Criar nova cópia PROFUNDA das entradas com a atualização
         const updatedEntries = monthData.entries.map((entry) => {
           if (entry.day === day) {
-            // Criar novo objeto com o campo atualizado
-            const updated = {
-              ...entry,
-              [field]: value,
+            return {
+              day: entry.day,
+              entrada: field === 'entrada' ? value : entry.entrada,
+              saida: field === 'saida' ? value : entry.saida,
+              diario: field === 'diario' ? value : entry.diario,
+              saldo: 0, // Será recalculado
             };
-            console.log(`[CashFlow] Dia ${day} atualizado:`, updated);
-            return updated;
           }
-          // Retornar cópia do entry original
-          return { ...entry };
+          return {
+            day: entry.day,
+            entrada: entry.entrada,
+            saida: entry.saida,
+            diario: entry.diario,
+            saldo: 0, // Será recalculado
+          };
         });
 
         // Recalcular saldos a partir do saldo inicial do mês
         const saldoInicial = get().getSaldoInicial(monthStr);
+
+        console.log(`[CashFlow] Recalculando saldos do mês ${monthStr} com saldo inicial: ${saldoInicial}`);
+
         const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
         const totals = calculateMonthTotals(entriesWithSaldo);
 
-        // Atualizar o estado com os novos dados
-        set((state) => ({
-          months: {
-            ...state.months,
-            [monthStr]: {
-              ...monthData,
-              entries: entriesWithSaldo,
-              totals,
-            },
-          },
-        }), false); // false = não substituir o estado inteiro
+        // Verificar se o saldo final é absurdo
+        if (Math.abs(totals.saldoFinal) > 100000) {
+          console.error(`[CashFlow] 🚨 ALERTA: Saldo final absurdo calculado: ${totals.saldoFinal}`);
+          console.error(`[CashFlow] Valores do dia ${day}:`, entriesWithSaldo.find(e => e.day === day));
 
-        // Recalcular meses subsequentes em cascade
-        setTimeout(() => {
-          const recalculateNextMonth = (currentMonthStr: string) => {
+          // Tentar recalcular com saldo inicial zero
+          const entriesRecalculadas = recalculateMonthSaldos(updatedEntries, 0);
+          const totalsRecalculados = calculateMonthTotals(entriesRecalculadas);
+
+          set((state) => ({
+            months: {
+              ...state.months,
+              [monthStr]: {
+                ...monthData,
+                entries: entriesRecalculadas,
+                totals: totalsRecalculados,
+              },
+            },
+          }));
+
+          console.log(`[CashFlow] Mês recalculado com saldo inicial 0. Novo saldo final: ${totalsRecalculados.saldoFinal}`);
+        } else {
+          // Atualizar o estado com os novos dados
+          set((state) => ({
+            months: {
+              ...state.months,
+              [monthStr]: {
+                ...monthData,
+                entries: entriesWithSaldo,
+                totals,
+              },
+            },
+          }));
+
+          console.log(`[CashFlow] Dia ${day} atualizado com sucesso. Novo saldo: ${entriesWithSaldo.find(e => e.day === day)?.saldo}`);
+        }
+
+        // Recalcular meses subsequentes (sem setTimeout para evitar condições de corrida)
+        const recalculateNextMonths = () => {
+          let currentMonthStr = monthStr;
+
+          while (true) {
             const currentState = get();
             const currentMonthData = currentState.months[currentMonthStr];
 
-            if (!currentMonthData) return;
+            if (!currentMonthData) break;
 
             const date = new Date(currentMonthStr + '-01');
             date.setMonth(date.getMonth() + 1);
             const nextMonthStr = formatMonthString(date);
             const nextMonthData = currentState.months[nextMonthStr];
 
-            if (nextMonthData) {
-              const nextSaldoInicial = currentMonthData.totals.saldoFinal;
-              const nextEntriesWithSaldo = recalculateMonthSaldos(
-                nextMonthData.entries.map(e => ({ ...e })),
-                nextSaldoInicial
-              );
-              const nextTotals = calculateMonthTotals(nextEntriesWithSaldo);
+            if (!nextMonthData) break;
 
-              set((state) => ({
-                months: {
-                  ...state.months,
-                  [nextMonthStr]: {
-                    ...nextMonthData,
-                    entries: nextEntriesWithSaldo,
-                    totals: nextTotals,
-                  },
-                },
-              }), false);
+            const nextSaldoInicial = currentMonthData.totals.saldoFinal;
 
-              // Continuar para o próximo mês
-              recalculateNextMonth(nextMonthStr);
+            // Validar saldo inicial antes de propagar
+            if (Math.abs(nextSaldoInicial) > 100000) {
+              console.error(`[CashFlow] Bloqueando propagação de saldo absurdo: ${nextSaldoInicial}`);
+              break;
             }
-          };
 
-          recalculateNextMonth(monthStr);
-        }, 0);
+            const nextEntriesWithSaldo = recalculateMonthSaldos(
+              nextMonthData.entries,
+              nextSaldoInicial
+            );
+            const nextTotals = calculateMonthTotals(nextEntriesWithSaldo);
+
+            set((state) => ({
+              months: {
+                ...state.months,
+                [nextMonthStr]: {
+                  ...nextMonthData,
+                  entries: nextEntriesWithSaldo,
+                  totals: nextTotals,
+                },
+              },
+            }));
+
+            currentMonthStr = nextMonthStr;
+          }
+        };
+
+        // Executar recálculo dos próximos meses de forma síncrona
+        recalculateNextMonths();
       },
 
       setCurrentMonth: (monthStr: string) => {
@@ -260,25 +312,25 @@ export const useCashFlowStore = create<CashFlowStore>()(
           saldoInicial = 0;
         }
 
-        // Log detalhado para debug
-        if (prevMonth) {
-          const ultimoDia = prevMonth.entries[prevMonth.entries.length - 1];
-          console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
-            mesAnterior: prevMonthStr,
-            ultimoDiaMesAnterior: ultimoDia?.day,
-            saldoUltimoDia: ultimoDia?.saldo,
-            saldoFinalTotals: prevMonth.totals.saldoFinal,
-            saldoInicialHerdado: saldoInicial,
-            confirmacao: `✅ Dia ${ultimoDia?.day}/${prevMonthStr} (R$ ${ultimoDia?.saldo?.toLocaleString('pt-BR')}) → Dia 1/${monthStr} (R$ ${saldoInicial.toLocaleString('pt-BR')})`
-          });
-        } else {
-          console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
-            mesAnterior: prevMonthStr,
-            existe: false,
-            saldoInicial: 0,
-            confirmacao: '✅ Primeiro mês - iniciando com R$ 0'
-          });
-        }
+        // Log apenas em casos específicos de debug (comentado para evitar loops)
+        // if (prevMonth) {
+        //   const ultimoDia = prevMonth.entries[prevMonth.entries.length - 1];
+        //   console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
+        //     mesAnterior: prevMonthStr,
+        //     ultimoDiaMesAnterior: ultimoDia?.day,
+        //     saldoUltimoDia: ultimoDia?.saldo,
+        //     saldoFinalTotals: prevMonth.totals.saldoFinal,
+        //     saldoInicialHerdado: saldoInicial,
+        //     confirmacao: `✅ Dia ${ultimoDia?.day}/${prevMonthStr} (R$ ${ultimoDia?.saldo?.toLocaleString('pt-BR')}) → Dia 1/${monthStr} (R$ ${saldoInicial.toLocaleString('pt-BR')})`
+        //   });
+        // } else {
+        //   console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
+        //     mesAnterior: prevMonthStr,
+        //     existe: false,
+        //     saldoInicial: 0,
+        //     confirmacao: '✅ Primeiro mês - iniciando com R$ 0'
+        //   });
+        // }
 
         return saldoInicial;
       },

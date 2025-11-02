@@ -5,27 +5,53 @@ import type { DailyEntry } from '../types/cashflow';
  * Remove formatação de moeda e garante que é um número válido
  */
 const toSafeNumber = (value: any): number => {
-  if (value === null || value === undefined) return 0;
-  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+  // Casos básicos
+  if (value === null || value === undefined || value === '') return 0;
 
-  // Remove formatação de moeda e converte
-  const cleaned = String(value).replace(/[^\d.,-]/g, '').replace(',', '.');
-  const num = parseFloat(cleaned);
-
-  // Validação de sanidade
-  if (isNaN(num)) {
-    console.warn('[Calculations] Valor inválido detectado:', value, '-> usando 0');
-    return 0;
+  // Se já é número, validar
+  if (typeof value === 'number') {
+    if (isNaN(value) || !isFinite(value)) {
+      console.warn('[Calculations] Número inválido detectado:', value, '-> usando 0');
+      return 0;
+    }
+    // Limitar valores extremos
+    const MAX_VALUE = 10000000; // 10 milhões
+    if (Math.abs(value) > MAX_VALUE) {
+      console.error('[Calculations] ⚠️ VALOR MUITO ALTO:', value, '-> limitando a', MAX_VALUE);
+      return Math.sign(value) * MAX_VALUE;
+    }
+    return value;
   }
 
-  // Limitar valores absurdos
-  const MAX_VALUE = 999999999; // 999 milhões
-  if (Math.abs(num) > MAX_VALUE) {
-    console.error('[Calculations] ⚠️ VALOR ABSURDO DETECTADO:', num, '-> resetando para 0');
-    return 0;
+  // Converter string para número
+  if (typeof value === 'string') {
+    // Remove formatação de moeda brasileira
+    const cleaned = value
+      .replace(/[R$\s]/g, '') // Remove R$, espaços
+      .replace(/\./g, '') // Remove pontos de milhar
+      .replace(',', '.'); // Substitui vírgula decimal por ponto
+
+    const num = parseFloat(cleaned);
+
+    // Validação
+    if (isNaN(num) || !isFinite(num)) {
+      console.warn('[Calculations] String inválida para conversão:', value, '-> usando 0');
+      return 0;
+    }
+
+    // Limitar valores extremos
+    const MAX_VALUE = 10000000; // 10 milhões
+    if (Math.abs(num) > MAX_VALUE) {
+      console.error('[Calculations] ⚠️ VALOR MUITO ALTO da string:', value, '-> limitando a', MAX_VALUE);
+      return Math.sign(num) * MAX_VALUE;
+    }
+
+    return num;
   }
 
-  return num;
+  // Qualquer outro tipo
+  console.warn('[Calculations] Tipo inesperado para conversão:', typeof value, value, '-> usando 0');
+  return 0;
 };
 
 /**
@@ -58,13 +84,15 @@ export const recalculateMonthSaldos = (
   entries: DailyEntry[],
   saldoInicial: number | string
 ): DailyEntry[] => {
-  // 🔒 GARANTIR que saldo inicial é número
+  // 🔒 GARANTIR que saldo inicial é número seguro
   let currentSaldo = toSafeNumber(saldoInicial);
 
-  console.log('[Calculations] Recalculando saldos:', {
-    totalDias: entries.length,
-    saldoInicial: currentSaldo,
-  });
+  // Validar saldo inicial
+  const MAX_SALDO = 100000; // R$ 100 mil
+  if (Math.abs(currentSaldo) > MAX_SALDO) {
+    console.error(`[Calculations] 🚨 Saldo inicial absurdo: ${currentSaldo}. Resetando para 0`);
+    currentSaldo = 0;
+  }
 
   const result = entries.map((entry, index) => {
     // 🔒 CONVERSÃO SEGURA de todos os valores
@@ -72,48 +100,49 @@ export const recalculateMonthSaldos = (
     const saida = toSafeNumber(entry.saida);
     const diario = toSafeNumber(entry.diario);
 
+    // Calcular movimento do dia
+    const movimento = entrada - saida - diario;
+
     // Calcular novo saldo
-    const novoSaldo = currentSaldo + entrada - saida - diario;
+    const novoSaldo = currentSaldo + movimento;
 
-    // Log detalhado do primeiro dia para debug
-    if (index === 0) {
-      console.log('[Calculations] 📊 PRIMEIRO DIA DO MÊS:', {
-        saldoHerdadoMesAnterior: currentSaldo,
-        entrada,
-        saida,
-        diario,
-        formula: 'saldo = saldoAnterior + entrada - saida - diario',
-        calculo: `${currentSaldo} + ${entrada} - ${saida} - ${diario} = ${novoSaldo}`,
-        resultado: novoSaldo,
-        confirmacao: currentSaldo === 0
-          ? '✅ Primeiro mês do sistema ou mês anterior zerado'
-          : `✅ Herdou R$ ${currentSaldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} do último dia do mês anterior`
+    // Validação de sanidade do novo saldo
+    if (Math.abs(novoSaldo) > MAX_SALDO) {
+      console.error(`[Calculations] ⚠️ SALDO ABSURDO no dia ${entry.day}: R$ ${novoSaldo.toFixed(2)}`);
+      console.error('  Detalhes:', {
+        dia: entry.day,
+        saldoAnterior: currentSaldo.toFixed(2),
+        entrada: entrada.toFixed(2),
+        saida: saida.toFixed(2),
+        diario: diario.toFixed(2),
+        movimento: movimento.toFixed(2),
+        saldoCalculado: novoSaldo.toFixed(2)
       });
-    }
 
-    // Validação de sanidade
-    if (Math.abs(novoSaldo) > 10000000) {
-      console.error(`[Calculations] ⚠️ SALDO ABSURDO no dia ${entry.day}:`, novoSaldo);
-      console.error('Valores:', { currentSaldo, entrada, saida, diario });
-      // Reset para evitar propagação
-      currentSaldo = entrada - saida - diario;
+      // Em caso de saldo absurdo, usar apenas o movimento do dia
+      currentSaldo = movimento;
+      console.log(`[Calculations] Saldo corrigido para: R$ ${currentSaldo.toFixed(2)}`);
     } else {
       currentSaldo = novoSaldo;
     }
 
-    // Arredondar para 2 casas decimais
+    // Arredondar para 2 casas decimais para evitar problemas de ponto flutuante
     currentSaldo = Math.round(currentSaldo * 100) / 100;
 
     return {
-      ...entry,
-      entrada,
-      saida,
-      diario,
+      day: entry.day,
+      entrada: Math.round(entrada * 100) / 100,
+      saida: Math.round(saida * 100) / 100,
+      diario: Math.round(diario * 100) / 100,
       saldo: currentSaldo,
     };
   });
 
-  console.log('[Calculations] Recálculo concluído. Saldo final:', currentSaldo);
+  // Log final apenas se houver problemas
+  const saldoFinal = result[result.length - 1]?.saldo || 0;
+  if (Math.abs(saldoFinal) > MAX_SALDO) {
+    console.error(`[Calculations] 🚨 ALERTA: Mês terminou com saldo absurdo: R$ ${saldoFinal.toFixed(2)}`);
+  }
 
   return result;
 };

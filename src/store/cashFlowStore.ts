@@ -218,18 +218,61 @@ export const useCashFlowStore = create<CashFlowStore>()(
 
             if (!currentMonthData) break;
 
-            const date = new Date(currentMonthStr + '-01');
+            // DEBUG: Verificar conversão de datas
+            console.log(`[CashFlow] DEBUG - Criando próxima data a partir de: ${currentMonthStr}`);
+
+            // CORREÇÃO: Usar parseMonthString ao invés de concatenar string
+            const [yearStr, monthStr] = currentMonthStr.split('-');
+            const year = parseInt(yearStr);
+            const month = parseInt(monthStr) - 1; // JavaScript usa meses de 0-11
+
+            const date = new Date(year, month, 1);
+            const originalMonth = date.getMonth();
             date.setMonth(date.getMonth() + 1);
+            const newMonth = date.getMonth();
             const nextMonthStr = formatMonthString(date);
+
+            console.log(`[CashFlow] DEBUG - Conversão de data:`, {
+              currentMonthStr,
+              ano: year,
+              mes: month + 1,
+              mesOriginal: originalMonth,
+              mesNovo: newMonth,
+              nextMonthStr,
+              dateResultante: date.toISOString()
+            });
+
+            // Se não conseguiu avançar para o próximo mês, parar o loop
+            if (nextMonthStr === currentMonthStr) {
+              console.error(`[CashFlow] ERRO: Loop detectado - não conseguiu avançar do mês ${currentMonthStr}`);
+              break;
+            }
+
             const nextMonthData = currentState.months[nextMonthStr];
 
             if (!nextMonthData) break;
 
-            const nextSaldoInicial = currentMonthData.totals.saldoFinal;
+            // CORREÇÃO: Garantir conversão para número
+            const rawSaldoFinal = currentMonthData.totals.saldoFinal;
+            const nextSaldoInicial = typeof rawSaldoFinal === 'string' ? parseFloat(rawSaldoFinal) : Number(rawSaldoFinal);
+
+            console.log(`[CashFlow] DEBUG - Propagando saldo:`, {
+              mesAtual: currentMonthStr,
+              proximoMes: nextMonthStr,
+              saldoFinalBruto: rawSaldoFinal,
+              tipoSaldoFinalBruto: typeof rawSaldoFinal,
+              saldoFinalConvertido: nextSaldoInicial,
+              tipoSaldoFinalConvertido: typeof nextSaldoInicial,
+              entriesUltimoDia: currentMonthData.entries[currentMonthData.entries.length - 1]
+            });
 
             // Validar saldo inicial antes de propagar
             if (Math.abs(nextSaldoInicial) > 100000) {
               console.error(`[CashFlow] Bloqueando propagação de saldo absurdo: ${nextSaldoInicial}`);
+              console.error(`[CashFlow] Detalhes do mês ${currentMonthStr}:`, {
+                totals: currentMonthData.totals,
+                ultimaEntry: currentMonthData.entries[currentMonthData.entries.length - 1]
+              });
               break;
             }
 

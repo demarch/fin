@@ -3,6 +3,9 @@ import type { DailyEntry } from '../types/cashflow';
 /**
  * 🔒 Converte valor para número garantindo tipo correto
  * Remove formatação de moeda e garante que é um número válido
+ *
+ * IMPORTANTE: MAX_VALUE aqui deve ser consistente com MAX_SALDO em recalculateMonthSaldos
+ * para evitar falsos positivos na detecção de valores absurdos
  */
 const toSafeNumber = (value: any): number => {
   // Casos básicos
@@ -88,7 +91,7 @@ export const recalculateMonthSaldos = (
   let currentSaldo = toSafeNumber(saldoInicial);
 
   // Validar saldo inicial
-  const MAX_SALDO = 100000; // R$ 100 mil
+  const MAX_SALDO = 10000000; // R$ 10 milhões - alinhado com MAX_VALUE para transações individuais
   if (Math.abs(currentSaldo) > MAX_SALDO) {
     console.error(`[Calculations] 🚨 Saldo inicial absurdo: ${currentSaldo}. Resetando para 0`);
     currentSaldo = 0;
@@ -108,7 +111,7 @@ export const recalculateMonthSaldos = (
 
     // Validação de sanidade do novo saldo
     if (Math.abs(novoSaldo) > MAX_SALDO) {
-      console.error(`[Calculations] ⚠️ SALDO ABSURDO no dia ${entry.day}: R$ ${novoSaldo.toFixed(2)}`);
+      console.error(`[Calculations] ⚠️ SALDO ABSURDO no dia ${entry.day}: R$ ${novoSaldo.toFixed(2)} (limite: R$ ${MAX_SALDO.toLocaleString('pt-BR')})`);
       console.error('  Detalhes:', {
         dia: entry.day,
         saldoAnterior: currentSaldo.toFixed(2),
@@ -141,7 +144,7 @@ export const recalculateMonthSaldos = (
   // Log final apenas se houver problemas
   const saldoFinal = result[result.length - 1]?.saldo || 0;
   if (Math.abs(saldoFinal) > MAX_SALDO) {
-    console.error(`[Calculations] 🚨 ALERTA: Mês terminou com saldo absurdo: R$ ${saldoFinal.toFixed(2)}`);
+    console.error(`[Calculations] 🚨 ALERTA: Mês terminou com saldo absurdo: R$ ${saldoFinal.toFixed(2)} (limite: R$ ${MAX_SALDO.toLocaleString('pt-BR')})`);
   }
 
   return result;

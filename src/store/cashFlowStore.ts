@@ -454,9 +454,11 @@ export const useCashFlowStore = create<CashFlowStore>()(
     }),
     {
       name: 'cashflow-storage',
-      version: 5, // 🔧 VERSÃO 5 - Correção definitiva de saldos absurdos com detecção e limpeza automática
+      version: 6, // 🔧 VERSÃO 6 - Correção: currentMonth não deve ser persistido
+      // Persistir apenas os meses, não o currentMonth
+      partialize: (state) => ({ months: state.months }),
       migrate: (persistedState: any) => {
-        // Ao migrar para versão 5, forçar validação de todos os meses
+        // Ao migrar, sempre inicializar currentMonth com o mês atual
         if (persistedState?.months) {
           const LIMITE_ABSURDO = 100000;
           const monthsCorrigidos: Record<string, any> = {};
@@ -467,7 +469,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
                                    Math.abs(monthData.totals?.saldoFinal || 0) > LIMITE_ABSURDO;
 
             if (temValorAbsurdo) {
-              console.log(`[Migration v5] Mês ${monthKey} com valores absurdos será excluído`);
+              console.log(`[Migration v6] Mês ${monthKey} com valores absurdos será excluído`);
               // Não incluir este mês na migração
             } else {
               monthsCorrigidos[monthKey] = monthData;
@@ -475,8 +477,8 @@ export const useCashFlowStore = create<CashFlowStore>()(
           });
 
           return {
-            ...persistedState,
             months: monthsCorrigidos,
+            // currentMonth será inicializado com o valor padrão (mês atual)
           };
         }
         return persistedState;

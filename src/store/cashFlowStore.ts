@@ -6,7 +6,7 @@ import {
   calculateMonthTotals,
   createEmptyMonthEntries,
 } from '../utils/calculations';
-import { formatMonthString, getMonthName } from '../utils/formatters';
+import { formatMonthString, getMonthName, parseMonthString } from '../utils/formatters';
 
 interface CashFlowStore {
   months: Record<string, MonthlyData>;
@@ -32,28 +32,36 @@ export const useCashFlowStore = create<CashFlowStore>()(
       initializeMonth: (monthStr: string) => {
         const state = get();
 
-        // Se o mês já existe, valida antes de retornar
+        // Se o mês já existe, SEMPRE valida e recalcula se necessário
         if (state.months[monthStr]) {
           const existingMonth = state.months[monthStr];
           const LIMITE_ABSURDO = 100000; // R$ 100 mil
 
-          // Verifica se tem saldos absurdos
-          const primeiroSaldo = existingMonth.entries[0]?.saldo || 0;
-          const saldoFinal = existingMonth.totals.saldoFinal || 0;
+          // Verifica se tem saldos absurdos em QUALQUER entrada
+          const temSaldoAbsurdo = existingMonth.entries.some(e => Math.abs(e.saldo) > LIMITE_ABSURDO);
+          const saldoFinalAbsurdo = Math.abs(existingMonth.totals.saldoFinal) > LIMITE_ABSURDO;
 
-          if (Math.abs(primeiroSaldo) > LIMITE_ABSURDO || Math.abs(saldoFinal) > LIMITE_ABSURDO) {
-            console.error(`[CashFlow] 🚨 Mês ${monthStr} existente com saldo absurdo detectado!`);
-            console.error(`[CashFlow] Primeiro saldo: ${primeiroSaldo}, Saldo final: ${saldoFinal}`);
+          if (temSaldoAbsurdo || saldoFinalAbsurdo) {
+            console.error(`[CashFlow] 🚨 Mês ${monthStr} com saldos absurdos detectado!`);
+            console.error(`[CashFlow] Alguns saldos:`, existingMonth.entries.slice(0, 3).map(e => e.saldo));
+            console.error(`[CashFlow] Saldo final: ${existingMonth.totals.saldoFinal}`);
+            console.error(`[CashFlow] 🔧 FORÇANDO RECÁLCULO COMPLETO COM SALDO INICIAL CORRETO`);
 
-            // Recalcula o mês com saldo inicial seguro
+            // Obter saldo inicial correto (já validado)
             const saldoInicialSeguro = get().getSaldoInicial(monthStr);
-            const entriesCorrigidas = recalculateMonthSaldos(
-              existingMonth.entries.map(e => ({ ...e })),
-              saldoInicialSeguro
-            );
+
+            console.log(`[CashFlow] Saldo inicial seguro obtido: R$ ${saldoInicialSeguro}`);
+
+            // Limpar saldos e recalcular do zero
+            const entriesLimpas = existingMonth.entries.map(e => ({
+              ...e,
+              saldo: 0, // Zerar saldos corrompidos
+            }));
+
+            const entriesCorrigidas = recalculateMonthSaldos(entriesLimpas, saldoInicialSeguro);
             const totalsCorrigidos = calculateMonthTotals(entriesCorrigidas);
 
-            // Atualiza com valores corrigidos
+            // Atualizar com valores corrigidos
             set((state) => ({
               months: {
                 ...state.months,
@@ -65,7 +73,10 @@ export const useCashFlowStore = create<CashFlowStore>()(
               },
             }));
 
-            console.log(`[CashFlow] ✅ Mês ${monthStr} recalculado automaticamente`);
+            console.log(`[CashFlow] ✅ Mês ${monthStr} RECALCULADO:`);
+            console.log(`  - Saldo inicial: R$ ${saldoInicialSeguro}`);
+            console.log(`  - Novo saldo final: R$ ${totalsCorrigidos.saldoFinal}`);
+            console.log(`  - Primeiros saldos:`, entriesCorrigidas.slice(0, 3).map(e => e.saldo));
           }
 
           return; // Month already exists (e foi validado/corrigido se necessário)
@@ -106,9 +117,10 @@ export const useCashFlowStore = create<CashFlowStore>()(
         if (!monthData) {
           console.log(`[CashFlow] Mês ${monthStr} não existe, inicializando...`);
           get().initializeMonth(monthStr);
-          setTimeout(() => {
+          // Tentar novamente após inicialização
+          requestAnimationFrame(() => {
             get().updateDailyEntry(monthStr, day, field, value);
-          }, 0);
+          });
           return;
         }
 
@@ -118,81 +130,175 @@ export const useCashFlowStore = create<CashFlowStore>()(
           return;
         }
 
-        // Verificar valor anterior
-        const oldEntry = monthData.entries.find(e => e.day === day);
-        console.log(`[CashFlow] Valor anterior do dia ${day}:`, oldEntry);
+        // Validar o valor de entrada
+        if (isNaN(value) || !isFinite(value)) {
+          console.error(`[CashFlow] Valor inválido: ${value}`);
+          return;
+        }
 
-        // Criar nova cópia do array de entradas com a atualização
+        // Limitar valores extremos
+        const MAX_ALLOWED_VALUE = 10000000; // 10 milhões
+        if (Math.abs(value) > MAX_ALLOWED_VALUE) {
+          console.error(`[CashFlow] Valor muito alto: ${value}. Limitando a ${MAX_ALLOWED_VALUE}`);
+          value = Math.sign(value) * MAX_ALLOWED_VALUE;
+        }
+
+        // Criar nova cópia PROFUNDA das entradas com a atualização
         const updatedEntries = monthData.entries.map((entry) => {
           if (entry.day === day) {
-            // Criar novo objeto com o campo atualizado
-            const updated = {
-              ...entry,
-              [field]: value,
+            return {
+              day: entry.day,
+              entrada: field === 'entrada' ? value : entry.entrada,
+              saida: field === 'saida' ? value : entry.saida,
+              diario: field === 'diario' ? value : entry.diario,
+              saldo: 0, // Será recalculado
             };
-            console.log(`[CashFlow] Dia ${day} atualizado:`, updated);
-            return updated;
           }
-          // Retornar cópia do entry original
-          return { ...entry };
+          return {
+            day: entry.day,
+            entrada: entry.entrada,
+            saida: entry.saida,
+            diario: entry.diario,
+            saldo: 0, // Será recalculado
+          };
         });
 
         // Recalcular saldos a partir do saldo inicial do mês
         const saldoInicial = get().getSaldoInicial(monthStr);
+
+        console.log(`[CashFlow] Recalculando saldos do mês ${monthStr} com saldo inicial: ${saldoInicial}`);
+
         const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
         const totals = calculateMonthTotals(entriesWithSaldo);
 
-        // Atualizar o estado com os novos dados
-        set((state) => ({
-          months: {
-            ...state.months,
-            [monthStr]: {
-              ...monthData,
-              entries: entriesWithSaldo,
-              totals,
-            },
-          },
-        }), false); // false = não substituir o estado inteiro
+        // Verificar se o saldo final é absurdo
+        if (Math.abs(totals.saldoFinal) > 100000) {
+          console.error(`[CashFlow] 🚨 ALERTA: Saldo final absurdo calculado: ${totals.saldoFinal}`);
+          console.error(`[CashFlow] Valores do dia ${day}:`, entriesWithSaldo.find(e => e.day === day));
 
-        // Recalcular meses subsequentes em cascade
-        setTimeout(() => {
-          const recalculateNextMonth = (currentMonthStr: string) => {
+          // Tentar recalcular com saldo inicial zero
+          const entriesRecalculadas = recalculateMonthSaldos(updatedEntries, 0);
+          const totalsRecalculados = calculateMonthTotals(entriesRecalculadas);
+
+          set((state) => ({
+            months: {
+              ...state.months,
+              [monthStr]: {
+                ...monthData,
+                entries: entriesRecalculadas,
+                totals: totalsRecalculados,
+              },
+            },
+          }));
+
+          console.log(`[CashFlow] Mês recalculado com saldo inicial 0. Novo saldo final: ${totalsRecalculados.saldoFinal}`);
+        } else {
+          // Atualizar o estado com os novos dados
+          set((state) => ({
+            months: {
+              ...state.months,
+              [monthStr]: {
+                ...monthData,
+                entries: entriesWithSaldo,
+                totals,
+              },
+            },
+          }));
+
+          console.log(`[CashFlow] Dia ${day} atualizado com sucesso. Novo saldo: ${entriesWithSaldo.find(e => e.day === day)?.saldo}`);
+        }
+
+        // Recalcular meses subsequentes (sem setTimeout para evitar condições de corrida)
+        const recalculateNextMonths = () => {
+          let currentMonthStr = monthStr;
+
+          while (true) {
             const currentState = get();
             const currentMonthData = currentState.months[currentMonthStr];
 
-            if (!currentMonthData) return;
+            if (!currentMonthData) break;
 
-            const date = new Date(currentMonthStr + '-01');
+            // DEBUG: Verificar conversão de datas
+            console.log(`[CashFlow] DEBUG - Criando próxima data a partir de: ${currentMonthStr}`);
+
+            // CORREÇÃO: Usar parseMonthString ao invés de concatenar string
+            const [yearStr, monthStr] = currentMonthStr.split('-');
+            const year = parseInt(yearStr);
+            const month = parseInt(monthStr) - 1; // JavaScript usa meses de 0-11
+
+            const date = new Date(year, month, 1);
+            const originalMonth = date.getMonth();
             date.setMonth(date.getMonth() + 1);
+            const newMonth = date.getMonth();
             const nextMonthStr = formatMonthString(date);
+
+            console.log(`[CashFlow] DEBUG - Conversão de data:`, {
+              currentMonthStr,
+              ano: year,
+              mes: month + 1,
+              mesOriginal: originalMonth,
+              mesNovo: newMonth,
+              nextMonthStr,
+              dateResultante: date.toISOString()
+            });
+
+            // Se não conseguiu avançar para o próximo mês, parar o loop
+            if (nextMonthStr === currentMonthStr) {
+              console.error(`[CashFlow] ERRO: Loop detectado - não conseguiu avançar do mês ${currentMonthStr}`);
+              break;
+            }
+
             const nextMonthData = currentState.months[nextMonthStr];
 
-            if (nextMonthData) {
-              const nextSaldoInicial = currentMonthData.totals.saldoFinal;
-              const nextEntriesWithSaldo = recalculateMonthSaldos(
-                nextMonthData.entries.map(e => ({ ...e })),
-                nextSaldoInicial
-              );
-              const nextTotals = calculateMonthTotals(nextEntriesWithSaldo);
+            if (!nextMonthData) break;
 
-              set((state) => ({
-                months: {
-                  ...state.months,
-                  [nextMonthStr]: {
-                    ...nextMonthData,
-                    entries: nextEntriesWithSaldo,
-                    totals: nextTotals,
-                  },
-                },
-              }), false);
+            // CORREÇÃO: Garantir conversão para número
+            const rawSaldoFinal = currentMonthData.totals.saldoFinal;
+            const nextSaldoInicial = typeof rawSaldoFinal === 'string' ? parseFloat(rawSaldoFinal) : Number(rawSaldoFinal);
 
-              // Continuar para o próximo mês
-              recalculateNextMonth(nextMonthStr);
+            console.log(`[CashFlow] DEBUG - Propagando saldo:`, {
+              mesAtual: currentMonthStr,
+              proximoMes: nextMonthStr,
+              saldoFinalBruto: rawSaldoFinal,
+              tipoSaldoFinalBruto: typeof rawSaldoFinal,
+              saldoFinalConvertido: nextSaldoInicial,
+              tipoSaldoFinalConvertido: typeof nextSaldoInicial,
+              entriesUltimoDia: currentMonthData.entries[currentMonthData.entries.length - 1]
+            });
+
+            // Validar saldo inicial antes de propagar
+            if (Math.abs(nextSaldoInicial) > 100000) {
+              console.error(`[CashFlow] Bloqueando propagação de saldo absurdo: ${nextSaldoInicial}`);
+              console.error(`[CashFlow] Detalhes do mês ${currentMonthStr}:`, {
+                totals: currentMonthData.totals,
+                ultimaEntry: currentMonthData.entries[currentMonthData.entries.length - 1]
+              });
+              break;
             }
-          };
 
-          recalculateNextMonth(monthStr);
-        }, 0);
+            const nextEntriesWithSaldo = recalculateMonthSaldos(
+              nextMonthData.entries,
+              nextSaldoInicial
+            );
+            const nextTotals = calculateMonthTotals(nextEntriesWithSaldo);
+
+            set((state) => ({
+              months: {
+                ...state.months,
+                [nextMonthStr]: {
+                  ...nextMonthData,
+                  entries: nextEntriesWithSaldo,
+                  totals: nextTotals,
+                },
+              },
+            }));
+
+            currentMonthStr = nextMonthStr;
+          }
+        };
+
+        // Executar recálculo dos próximos meses de forma síncrona
+        recalculateNextMonths();
       },
 
       setCurrentMonth: (monthStr: string) => {
@@ -201,58 +307,63 @@ export const useCashFlowStore = create<CashFlowStore>()(
       },
 
       getSaldoInicial: (monthStr: string) => {
-        const date = new Date(monthStr + '-01');
+        // Usar parseMonthString para evitar problemas de timezone
+        const date = parseMonthString(monthStr);
         date.setMonth(date.getMonth() - 1);
         const prevMonthStr = formatMonthString(date);
 
         const prevMonth = get().months[prevMonthStr];
-        let saldoInicial = prevMonth?.totals.saldoFinal || 0;
 
         // 🔒 VALIDAÇÃO RIGOROSA: Detectar e corrigir saldos absurdos
         // Limite reduzido para R$ 100.000 para pegar valores como R$ 6.790.750
         const LIMITE_ABSURDO = 100000; // R$ 100 mil
-        if (Math.abs(saldoInicial) > LIMITE_ABSURDO) {
-          console.error(`[CashFlow] 🚨 SALDO INICIAL ABSURDO DETECTADO: R$ ${saldoInicial.toLocaleString('pt-BR')}`);
-          console.error(`[CashFlow] Mês anterior corrompido: ${prevMonthStr}`);
-          console.error(`[CashFlow] 🔧 Forçando saldo inicial para 0 e deletando mês corrompido`);
 
-          // Alertar o usuário
-          if (typeof window !== 'undefined') {
-            alert(`⚠️ Detectado saldo incorreto de R$ ${Math.abs(saldoInicial).toLocaleString('pt-BR', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })} vindo de ${prevMonthStr}.\n\nValor será resetado para evitar propagação do erro.`);
-          }
+        // Primeiro, verificar se o mês anterior tem saldos absurdos
+        if (prevMonth) {
+          const saldoFinalAbsurdo = Math.abs(prevMonth.totals.saldoFinal) > LIMITE_ABSURDO;
+          const algumaEntradaAbsurda = prevMonth.entries.some(e => Math.abs(e.saldo) > LIMITE_ABSURDO);
 
-          // Deletar mês anterior corrompido
-          if (prevMonth) {
+          if (saldoFinalAbsurdo || algumaEntradaAbsurda) {
+            console.error(`[CashFlow] 🚨 MÊS ANTERIOR CORROMPIDO DETECTADO: ${prevMonthStr}`);
+            console.error(`[CashFlow] Saldo final absurdo: R$ ${prevMonth.totals.saldoFinal.toLocaleString('pt-BR')}`);
+            console.error(`[CashFlow] 🔧 Deletando mês corrompido e retornando saldo inicial ZERO`);
+
+            // Deletar mês corrompido
             const newMonths = { ...get().months };
             delete newMonths[prevMonthStr];
             set({ months: newMonths });
-          }
 
+            // Alertar o usuário
+            if (typeof window !== 'undefined') {
+              alert(`⚠️ Mês ${prevMonthStr} estava corrompido com valores absurdos.\n\n` +
+                    `Foi detectado saldo de R$ ${Math.abs(prevMonth.totals.saldoFinal).toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}.\n\n` +
+                    `O mês foi deletado e o saldo inicial será ZERO.`);
+            }
+
+            return 0; // Retornar zero imediatamente
+          }
+        }
+
+        // Se não há mês anterior ou foi deletado, retornar 0
+        let saldoInicial = prevMonth?.totals.saldoFinal || 0;
+
+        // Validação adicional do saldo inicial
+        if (Math.abs(saldoInicial) > LIMITE_ABSURDO) {
+          console.error(`[CashFlow] 🚨 SALDO INICIAL ABSURDO: R$ ${saldoInicial.toLocaleString('pt-BR')}`);
           saldoInicial = 0;
         }
 
-        // Log detalhado para debug
-        if (prevMonth) {
-          const ultimoDia = prevMonth.entries[prevMonth.entries.length - 1];
-          console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
-            mesAnterior: prevMonthStr,
-            ultimoDiaMesAnterior: ultimoDia?.day,
-            saldoUltimoDia: ultimoDia?.saldo,
-            saldoFinalTotals: prevMonth.totals.saldoFinal,
-            saldoInicialHerdado: saldoInicial,
-            confirmacao: `✅ Dia ${ultimoDia?.day}/${prevMonthStr} (R$ ${ultimoDia?.saldo?.toLocaleString('pt-BR')}) → Dia 1/${monthStr} (R$ ${saldoInicial.toLocaleString('pt-BR')})`
-          });
-        } else {
-          console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
-            mesAnterior: prevMonthStr,
-            existe: false,
-            saldoInicial: 0,
-            confirmacao: '✅ Primeiro mês - iniciando com R$ 0'
-          });
-        }
+        // Log para debug de propagação de saldos
+        console.log(`[CashFlow] 💰 getSaldoInicial(${monthStr}):`, {
+          mesAnterior: prevMonthStr,
+          existe: !!prevMonth,
+          saldoFinal: prevMonth?.totals.saldoFinal,
+          saldoInicial,
+          tipo: typeof saldoInicial
+        });
 
         return saldoInicial;
       },
@@ -333,7 +444,35 @@ export const useCashFlowStore = create<CashFlowStore>()(
     }),
     {
       name: 'cashflow-storage',
-      version: 4, // 🔧 VERSÃO 4 - Correção de saldo inicial entre meses + validação rigorosa
+      version: 6, // 🔧 VERSÃO 6 - Correção: currentMonth não deve ser persistido
+      // Persistir apenas os meses, não o currentMonth
+      partialize: (state) => ({ months: state.months }),
+      migrate: (persistedState: any) => {
+        // Ao migrar, sempre inicializar currentMonth com o mês atual
+        if (persistedState?.months) {
+          const LIMITE_ABSURDO = 100000;
+          const monthsCorrigidos: Record<string, any> = {};
+
+          Object.entries(persistedState.months).forEach(([monthKey, monthData]: [string, any]) => {
+            // Verificar se o mês tem valores absurdos
+            const temValorAbsurdo = monthData.entries?.some((e: any) => Math.abs(e.saldo) > LIMITE_ABSURDO) ||
+                                   Math.abs(monthData.totals?.saldoFinal || 0) > LIMITE_ABSURDO;
+
+            if (temValorAbsurdo) {
+              console.log(`[Migration v6] Mês ${monthKey} com valores absurdos será excluído`);
+              // Não incluir este mês na migração
+            } else {
+              monthsCorrigidos[monthKey] = monthData;
+            }
+          });
+
+          return {
+            months: monthsCorrigidos,
+            // currentMonth será inicializado com o valor padrão (mês atual)
+          };
+        }
+        return persistedState;
+      },
     }
   )
 );

@@ -356,8 +356,14 @@ export const useCashFlowStore = create<CashFlowStore>()(
           saldoInicial = 0;
         }
 
-        // Log apenas em caso de debug quando necessário
-        // console.log(`[CashFlow] getSaldoInicial(${monthStr}): R$ ${saldoInicial} herdado de ${prevMonthStr}`);
+        // Log para debug de propagação de saldos
+        console.log(`[CashFlow] 💰 getSaldoInicial(${monthStr}):`, {
+          mesAnterior: prevMonthStr,
+          existe: !!prevMonth,
+          saldoFinal: prevMonth?.totals.saldoFinal,
+          saldoInicial,
+          tipo: typeof saldoInicial
+        });
 
         return saldoInicial;
       },

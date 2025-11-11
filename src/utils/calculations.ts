@@ -90,6 +90,12 @@ export const recalculateMonthSaldos = (
   // 🔒 GARANTIR que saldo inicial é número seguro
   let currentSaldo = toSafeNumber(saldoInicial);
 
+  console.log(`[Calculations] 🔢 recalculateMonthSaldos iniciado:`, {
+    saldoInicial: currentSaldo,
+    totalDias: entries.length,
+    primeiroDia: entries[0]?.day
+  });
+
   // Validar saldo inicial
   const MAX_SALDO = 10000000; // R$ 10 milhões - alinhado com MAX_VALUE para transações individuais
   if (Math.abs(currentSaldo) > MAX_SALDO) {
@@ -108,6 +114,19 @@ export const recalculateMonthSaldos = (
 
     // Calcular novo saldo
     const novoSaldo = currentSaldo + movimento;
+
+    // Log detalhado apenas para os primeiros 3 dias
+    if (index < 3) {
+      console.log(`[Calculations] 📅 Dia ${entry.day}:`, {
+        saldoAnterior: currentSaldo,
+        entrada,
+        saida,
+        diario,
+        movimento,
+        novoSaldo,
+        formula: `${currentSaldo} + ${entrada} - ${saida} - ${diario} = ${novoSaldo}`
+      });
+    }
 
     // Validação de sanidade do novo saldo
     if (Math.abs(novoSaldo) > MAX_SALDO) {

@@ -7,7 +7,7 @@ import {
   createEmptyMonthEntries,
   calculateTotalsFromTransactions,
 } from '../utils/calculations';
-import { formatMonthString, getMonthName } from '../utils/formatters';
+import { formatMonthString, getMonthName, parseMonthString } from '../utils/formatters';
 
 interface CashFlowStore {
   months: Record<string, MonthlyData>;
@@ -315,7 +315,8 @@ export const useCashFlowStore = create<CashFlowStore>()(
       },
 
       getSaldoInicial: (monthStr: string) => {
-        const date = new Date(monthStr + '-01');
+        // Usar parseMonthString para evitar problemas de timezone
+        const date = parseMonthString(monthStr);
         date.setMonth(date.getMonth() - 1);
         const prevMonthStr = formatMonthString(date);
 
@@ -363,25 +364,14 @@ export const useCashFlowStore = create<CashFlowStore>()(
           saldoInicial = 0;
         }
 
-        // Log apenas em casos específicos de debug (comentado para evitar loops)
-        // if (prevMonth) {
-        //   const ultimoDia = prevMonth.entries[prevMonth.entries.length - 1];
-        //   console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
-        //     mesAnterior: prevMonthStr,
-        //     ultimoDiaMesAnterior: ultimoDia?.day,
-        //     saldoUltimoDia: ultimoDia?.saldo,
-        //     saldoFinalTotals: prevMonth.totals.saldoFinal,
-        //     saldoInicialHerdado: saldoInicial,
-        //     confirmacao: `✅ Dia ${ultimoDia?.day}/${prevMonthStr} (R$ ${ultimoDia?.saldo?.toLocaleString('pt-BR')}) → Dia 1/${monthStr} (R$ ${saldoInicial.toLocaleString('pt-BR')})`
-        //   });
-        // } else {
-        //   console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
-        //     mesAnterior: prevMonthStr,
-        //     existe: false,
-        //     saldoInicial: 0,
-        //     confirmacao: '✅ Primeiro mês - iniciando com R$ 0'
-        //   });
-        // }
+        // Log para debug de propagação de saldos
+        console.log(`[CashFlow] 💰 getSaldoInicial(${monthStr}):`, {
+          mesAnterior: prevMonthStr,
+          existe: !!prevMonth,
+          saldoFinal: prevMonth?.totals.saldoFinal,
+          saldoInicial,
+          tipo: typeof saldoInicial
+        });
 
         return saldoInicial;
       },
@@ -666,8 +656,8 @@ export const useCashFlowStore = create<CashFlowStore>()(
           console.log(`[Migration v6] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados com suporte a transações.`);
 
           return {
-            ...persistedState,
             months: monthsCorrigidos,
+            // currentMonth será inicializado com o valor padrão (mês atual)
           };
         }
         return persistedState;

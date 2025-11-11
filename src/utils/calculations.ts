@@ -156,13 +156,24 @@ export const recalculateMonthSaldos = (
 export const calculateMonthTotals = (entries: DailyEntry[]) => {
   const totalEntradas = entries.reduce((sum, entry) => sum + toSafeNumber(entry.entrada), 0);
   const totalSaidas = entries.reduce((sum, entry) => sum + toSafeNumber(entry.saida), 0);
-  const saldoFinal = entries[entries.length - 1]?.saldo || 0;
+  const ultimaEntry = entries[entries.length - 1];
+  const saldoFinal = ultimaEntry?.saldo || 0;
 
-  return {
+  const totals = {
     totalEntradas: Math.round(totalEntradas * 100) / 100,
     totalSaidas: Math.round(totalSaidas * 100) / 100,
     saldoFinal: Math.round(toSafeNumber(saldoFinal) * 100) / 100,
   };
+
+  console.log('[Calculations] 📊 calculateMonthTotals:', {
+    totalDias: entries.length,
+    ultimoDia: ultimaEntry?.day,
+    saldoUltimoDia: ultimaEntry?.saldo,
+    saldoFinalCalculado: totals.saldoFinal,
+    match: ultimaEntry?.saldo === totals.saldoFinal ? '✅' : '❌'
+  });
+
+  return totals;
 };
 
 /**

@@ -87,12 +87,20 @@ export const useCashFlowStore = create<CashFlowStore>()(
         const month = date.getMonth() + 1;
         const monthName = getMonthName(date.getMonth());
 
+        console.log(`[CashFlow] 🆕 Inicializando mês ${monthStr} (${monthName} ${year})...`);
+
         const entries = createEmptyMonthEntries(year, month);
         const saldoInicial = get().getSaldoInicial(monthStr);
         const entriesWithSaldo = recalculateMonthSaldos(entries, saldoInicial);
         const totals = calculateMonthTotals(entriesWithSaldo);
 
-        console.log(`[CashFlow] ✅ Mês ${monthStr} inicializado com saldo inicial: R$ ${saldoInicial.toLocaleString('pt-BR')}`);
+        console.log(`[CashFlow] ✅ Mês ${monthStr} inicializado:`, {
+          saldoInicial,
+          totalDias: entries.length,
+          primeiroDiaSaldo: entriesWithSaldo[0]?.saldo,
+          ultimoDiaSaldo: entriesWithSaldo[entriesWithSaldo.length - 1]?.saldo,
+          saldoFinalTotals: totals.saldoFinal
+        });
 
         set((state) => ({
           months: {
@@ -355,25 +363,26 @@ export const useCashFlowStore = create<CashFlowStore>()(
           saldoInicial = 0;
         }
 
-        // Log apenas em casos específicos de debug (comentado para evitar loops)
-        // if (prevMonth) {
-        //   const ultimoDia = prevMonth.entries[prevMonth.entries.length - 1];
-        //   console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
-        //     mesAnterior: prevMonthStr,
-        //     ultimoDiaMesAnterior: ultimoDia?.day,
-        //     saldoUltimoDia: ultimoDia?.saldo,
-        //     saldoFinalTotals: prevMonth.totals.saldoFinal,
-        //     saldoInicialHerdado: saldoInicial,
-        //     confirmacao: `✅ Dia ${ultimoDia?.day}/${prevMonthStr} (R$ ${ultimoDia?.saldo?.toLocaleString('pt-BR')}) → Dia 1/${monthStr} (R$ ${saldoInicial.toLocaleString('pt-BR')})`
-        //   });
-        // } else {
-        //   console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
-        //     mesAnterior: prevMonthStr,
-        //     existe: false,
-        //     saldoInicial: 0,
-        //     confirmacao: '✅ Primeiro mês - iniciando com R$ 0'
-        //   });
-        // }
+        // Log de debug para diagnosticar propagação de saldos
+        if (prevMonth) {
+          const ultimoDia = prevMonth.entries[prevMonth.entries.length - 1];
+          console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
+            mesAnterior: prevMonthStr,
+            ultimoDiaMesAnterior: ultimoDia?.day,
+            saldoUltimoDia: ultimoDia?.saldo,
+            saldoFinalTotals: prevMonth.totals.saldoFinal,
+            saldoInicialHerdado: saldoInicial,
+            match: ultimoDia?.saldo === prevMonth.totals.saldoFinal ? '✅ MATCH' : '❌ MISMATCH',
+            confirmacao: `✅ Dia ${ultimoDia?.day}/${prevMonthStr} (R$ ${ultimoDia?.saldo?.toLocaleString('pt-BR')}) → Dia 1/${monthStr} (R$ ${saldoInicial.toLocaleString('pt-BR')})`
+          });
+        } else {
+          console.log(`[CashFlow] 📊 getSaldoInicial(${monthStr}):`, {
+            mesAnterior: prevMonthStr,
+            existe: false,
+            saldoInicial: 0,
+            confirmacao: '✅ Primeiro mês - iniciando com R$ 0'
+          });
+        }
 
         return saldoInicial;
       },

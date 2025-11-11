@@ -1,4 +1,4 @@
-import type { DailyEntry } from '../types/cashflow';
+import type { DailyEntry, Transaction } from '../types/cashflow';
 
 /**
  * 🔒 Converte valor para número garantindo tipo correto
@@ -58,6 +58,42 @@ const toSafeNumber = (value: any): number => {
 };
 
 /**
+ * Calcula os totais de entrada, saída e diário a partir das transações
+ */
+export const calculateTotalsFromTransactions = (transactions: Transaction[]): {
+  entrada: number;
+  saida: number;
+  diario: number;
+} => {
+  const totals = transactions.reduce(
+    (acc, transaction) => {
+      const amount = toSafeNumber(transaction.amount);
+
+      switch (transaction.type) {
+        case 'receita':
+          acc.entrada += amount;
+          break;
+        case 'despesa':
+          acc.saida += amount;
+          break;
+        case 'diario':
+          acc.diario += amount;
+          break;
+      }
+
+      return acc;
+    },
+    { entrada: 0, saida: 0, diario: 0 }
+  );
+
+  return {
+    entrada: Math.round(totals.entrada * 100) / 100,
+    saida: Math.round(totals.saida * 100) / 100,
+    diario: Math.round(totals.diario * 100) / 100,
+  };
+};
+
+/**
  * Calcula o saldo de um dia específico
  * Para o dia 1: saldo = entrada - saida - diario
  * Para demais dias: saldo = saldo_anterior + entrada - saida - diario
@@ -97,7 +133,7 @@ export const recalculateMonthSaldos = (
     currentSaldo = 0;
   }
 
-  const result = entries.map((entry, index) => {
+  const result = entries.map((entry) => {
     // 🔒 CONVERSÃO SEGURA de todos os valores
     const entrada = toSafeNumber(entry.entrada);
     const saida = toSafeNumber(entry.saida);
@@ -138,6 +174,7 @@ export const recalculateMonthSaldos = (
       saida: Math.round(saida * 100) / 100,
       diario: Math.round(diario * 100) / 100,
       saldo: currentSaldo,
+      transactions: entry.transactions || [], // Preservar transações
     };
   });
 
@@ -177,6 +214,7 @@ export const createEmptyMonthEntries = (year: number, month: number): DailyEntry
     saida: 0,
     diario: 0,
     saldo: 0,
+    transactions: [], // Array vazio de transações
   }));
 };
 
@@ -220,6 +258,7 @@ export const sanitizeAndRecalculate = (
     saida: toSafeNumber(entry.saida),
     diario: toSafeNumber(entry.diario),
     saldo: 0, // Vai ser recalculado
+    transactions: entry.transactions || [], // Preservar transações
   }));
 
   // Recalcular com saldo inicial zero se não fornecido

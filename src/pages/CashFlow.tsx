@@ -14,6 +14,8 @@ export default function CashFlow() {
     updateDailyEntry,
     setCurrentMonth,
     getSaldoInicial,
+    addTransaction,
+    deleteTransaction,
   } = useCashFlowStore();
 
   const monthData = months[currentMonth];
@@ -127,6 +129,12 @@ export default function CashFlow() {
             onUpdateEntry={(day, field, value) =>
               updateDailyEntry(currentMonth, day, field, value)
             }
+            onAddTransaction={(day, type, description, amount, category) =>
+              addTransaction(currentMonth, day, type, description, amount, category)
+            }
+            onDeleteTransaction={(day, transactionId) =>
+              deleteTransaction(currentMonth, day, transactionId)
+            }
           />
         </Card>
 
@@ -175,10 +183,16 @@ export default function CashFlow() {
 
         {/* Instructions */}
         <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            <strong>Dica:</strong> Clique duas vezes em qualquer célula para editar o valor.
-            Pressione Enter para salvar ou Esc para cancelar.
-          </p>
+          <div className="text-sm text-yellow-800 space-y-2">
+            <p>
+              <strong>Dica:</strong> Clique duas vezes em qualquer célula para editar o valor.
+              Pressione Enter para salvar ou Esc para cancelar.
+            </p>
+            <p>
+              <strong>Novo:</strong> Use o botão <span className="text-green-700 font-semibold">+</span> para adicionar
+              transações individuais (receitas, despesas, gastos diários). Os totais são calculados automaticamente!
+            </p>
+          </div>
         </div>
       </div>
 

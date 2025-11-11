@@ -1,13 +1,15 @@
-import type { MonthlyData } from '../../types/cashflow';
+import type { MonthlyData, TransactionType } from '../../types/cashflow';
 import DayRow from './DayRow';
 import { formatCurrency } from '../../utils/formatters';
 
 interface MonthGridProps {
   monthData: MonthlyData;
   onUpdateEntry: (day: number, field: keyof import('../../types/cashflow').DailyEntry, value: number) => void;
+  onAddTransaction: (day: number, type: TransactionType, description: string, amount: number, category?: string) => void;
+  onDeleteTransaction: (day: number, transactionId: string) => void;
 }
 
-export default function MonthGrid({ monthData, onUpdateEntry }: MonthGridProps) {
+export default function MonthGrid({ monthData, onUpdateEntry, onAddTransaction, onDeleteTransaction }: MonthGridProps) {
   const today = new Date();
   const isCurrentMonth =
     today.getFullYear() === monthData.year &&
@@ -31,8 +33,11 @@ export default function MonthGrid({ monthData, onUpdateEntry }: MonthGridProps) 
             <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
               Diário
             </th>
-            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
               Saldo
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              Ações
             </th>
           </tr>
         </thead>
@@ -41,7 +46,14 @@ export default function MonthGrid({ monthData, onUpdateEntry }: MonthGridProps) 
             <DayRow
               key={entry.day}
               entry={entry}
+              monthStr={monthData.month}
               onUpdate={(field, value) => onUpdateEntry(entry.day, field, value)}
+              onAddTransaction={(type, description, amount, category) =>
+                onAddTransaction(entry.day, type, description, amount, category)
+              }
+              onDeleteTransaction={(transactionId) =>
+                onDeleteTransaction(entry.day, transactionId)
+              }
               isToday={isCurrentMonth && entry.day === currentDay}
             />
           ))}
@@ -60,8 +72,11 @@ export default function MonthGrid({ monthData, onUpdateEntry }: MonthGridProps) 
             <td className="px-4 py-3 text-sm border-r border-blue-600">
               -
             </td>
-            <td className="px-4 py-3 text-sm">
+            <td className="px-4 py-3 text-sm border-r border-blue-600">
               {formatCurrency(monthData.totals.saldoFinal)}
+            </td>
+            <td className="px-4 py-3 text-sm">
+              -
             </td>
           </tr>
         </tbody>

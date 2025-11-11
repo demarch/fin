@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DailyEntry, MonthlyData } from '../types/cashflow';
+import type { DailyEntry, MonthlyData, Transaction, TransactionType } from '../types/cashflow';
 import {
   recalculateMonthSaldos,
   calculateMonthTotals,
   createEmptyMonthEntries,
+  calculateTotalsFromTransactions,
 } from '../utils/calculations';
 import { formatMonthString, getMonthName, parseMonthString } from '../utils/formatters';
 
@@ -21,6 +22,11 @@ interface CashFlowStore {
   clearAllData: () => void;
   deleteMonth: (monthStr: string) => void;
   sanitizeAllMonths: () => void;
+
+  // Transaction Actions
+  addTransaction: (monthStr: string, day: number, type: TransactionType, description: string, amount: number, category?: string) => void;
+  updateTransaction: (monthStr: string, day: number, transactionId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => void;
+  deleteTransaction: (monthStr: string, day: number, transactionId: string) => void;
 }
 
 export const useCashFlowStore = create<CashFlowStore>()(
@@ -152,6 +158,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
               saida: field === 'saida' ? value : entry.saida,
               diario: field === 'diario' ? value : entry.diario,
               saldo: 0, // Será recalculado
+              transactions: entry.transactions || [], // Preservar transações
             };
           }
           return {
@@ -160,6 +167,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
             saida: entry.saida,
             diario: entry.diario,
             saldo: 0, // Será recalculado
+            transactions: entry.transactions || [], // Preservar transações
           };
         });
 
@@ -441,14 +449,184 @@ export const useCashFlowStore = create<CashFlowStore>()(
         console.log(`  - ${deletados} meses deletados`);
         console.log(`  - Saldo final acumulado: R$ ${saldoAcumulado.toLocaleString('pt-BR')}`);
       },
+
+      // Transaction Actions
+      addTransaction: (monthStr: string, day: number, type: TransactionType, description: string, amount: number, category?: string) => {
+        console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}`);
+
+        const state = get();
+        const monthData = state.months[monthStr];
+
+        if (!monthData) {
+          console.log(`[CashFlow] Mês ${monthStr} não existe, inicializando...`);
+          get().initializeMonth(monthStr);
+          // Tentar novamente após inicialização
+          requestAnimationFrame(() => {
+            get().addTransaction(monthStr, day, type, description, amount, category);
+          });
+          return;
+        }
+
+        // Criar nova transação
+        const newTransaction: Transaction = {
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type,
+          description,
+          amount,
+          category,
+          createdAt: new Date().toISOString(),
+        };
+
+        // Atualizar o dia com a nova transação
+        const updatedEntries = monthData.entries.map((entry) => {
+          if (entry.day === day) {
+            const updatedTransactions = [...(entry.transactions || []), newTransaction];
+            const totals = calculateTotalsFromTransactions(updatedTransactions);
+
+            return {
+              ...entry,
+              transactions: updatedTransactions,
+              entrada: totals.entrada,
+              saida: totals.saida,
+              diario: totals.diario,
+            };
+          }
+          return entry;
+        });
+
+        // Recalcular saldos do mês
+        const saldoInicial = get().getSaldoInicial(monthStr);
+        const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
+        const totals = calculateMonthTotals(entriesWithSaldo);
+
+        // Atualizar o estado
+        set((state) => ({
+          months: {
+            ...state.months,
+            [monthStr]: {
+              ...monthData,
+              entries: entriesWithSaldo,
+              totals,
+            },
+          },
+        }));
+
+        console.log(`[CashFlow] Transação adicionada com sucesso!`);
+
+        // Recalcular meses subsequentes
+        get().updateDailyEntry(monthStr, day, 'entrada', entriesWithSaldo.find(e => e.day === day)!.entrada);
+      },
+
+      updateTransaction: (monthStr: string, day: number, transactionId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => {
+        console.log(`[CashFlow] Atualizando transação ${transactionId} no dia ${day}/${monthStr}`);
+
+        const state = get();
+        const monthData = state.months[monthStr];
+
+        if (!monthData) {
+          console.error(`[CashFlow] Mês ${monthStr} não existe!`);
+          return;
+        }
+
+        // Atualizar a transação
+        const updatedEntries = monthData.entries.map((entry) => {
+          if (entry.day === day) {
+            const updatedTransactions = (entry.transactions || []).map((transaction) => {
+              if (transaction.id === transactionId) {
+                return { ...transaction, ...updates };
+              }
+              return transaction;
+            });
+
+            const totals = calculateTotalsFromTransactions(updatedTransactions);
+
+            return {
+              ...entry,
+              transactions: updatedTransactions,
+              entrada: totals.entrada,
+              saida: totals.saida,
+              diario: totals.diario,
+            };
+          }
+          return entry;
+        });
+
+        // Recalcular saldos do mês
+        const saldoInicial = get().getSaldoInicial(monthStr);
+        const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
+        const totals = calculateMonthTotals(entriesWithSaldo);
+
+        // Atualizar o estado
+        set((state) => ({
+          months: {
+            ...state.months,
+            [monthStr]: {
+              ...monthData,
+              entries: entriesWithSaldo,
+              totals,
+            },
+          },
+        }));
+
+        console.log(`[CashFlow] Transação atualizada com sucesso!`);
+      },
+
+      deleteTransaction: (monthStr: string, day: number, transactionId: string) => {
+        console.log(`[CashFlow] Deletando transação ${transactionId} no dia ${day}/${monthStr}`);
+
+        const state = get();
+        const monthData = state.months[monthStr];
+
+        if (!monthData) {
+          console.error(`[CashFlow] Mês ${monthStr} não existe!`);
+          return;
+        }
+
+        // Remover a transação
+        const updatedEntries = monthData.entries.map((entry) => {
+          if (entry.day === day) {
+            const updatedTransactions = (entry.transactions || []).filter(
+              (transaction) => transaction.id !== transactionId
+            );
+
+            const totals = calculateTotalsFromTransactions(updatedTransactions);
+
+            return {
+              ...entry,
+              transactions: updatedTransactions,
+              entrada: totals.entrada,
+              saida: totals.saida,
+              diario: totals.diario,
+            };
+          }
+          return entry;
+        });
+
+        // Recalcular saldos do mês
+        const saldoInicial = get().getSaldoInicial(monthStr);
+        const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
+        const totals = calculateMonthTotals(entriesWithSaldo);
+
+        // Atualizar o estado
+        set((state) => ({
+          months: {
+            ...state.months,
+            [monthStr]: {
+              ...monthData,
+              entries: entriesWithSaldo,
+              totals,
+            },
+          },
+        }));
+
+        console.log(`[CashFlow] Transação deletada com sucesso!`);
+      },
     }),
     {
       name: 'cashflow-storage',
-      version: 6, // 🔧 VERSÃO 6 - Correção: currentMonth não deve ser persistido
-      // Persistir apenas os meses, não o currentMonth
-      partialize: (state) => ({ months: state.months }),
+      version: 6, // 🔧 VERSÃO 6 - Adiciona suporte a transações individuais por dia
       migrate: (persistedState: any) => {
-        // Ao migrar, sempre inicializar currentMonth com o mês atual
+        // Migração da versão 5 ou anterior
         if (persistedState?.months) {
           const LIMITE_ABSURDO = 100000;
           const monthsCorrigidos: Record<string, any> = {};
@@ -462,9 +640,20 @@ export const useCashFlowStore = create<CashFlowStore>()(
               console.log(`[Migration v6] Mês ${monthKey} com valores absurdos será excluído`);
               // Não incluir este mês na migração
             } else {
-              monthsCorrigidos[monthKey] = monthData;
+              // Adicionar transactions vazias em todas as entries que não possuem
+              const entriesWithTransactions = monthData.entries?.map((entry: any) => ({
+                ...entry,
+                transactions: entry.transactions || [], // Adicionar array vazio se não existir
+              })) || [];
+
+              monthsCorrigidos[monthKey] = {
+                ...monthData,
+                entries: entriesWithTransactions,
+              };
             }
           });
+
+          console.log(`[Migration v6] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados com suporte a transações.`);
 
           return {
             months: monthsCorrigidos,

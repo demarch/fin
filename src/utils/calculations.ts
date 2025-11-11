@@ -139,7 +139,7 @@ export const recalculateMonthSaldos = (
     currentSaldo = 0;
   }
 
-  const result = entries.map((entry) => {
+  const result = entries.map((entry, index) => {
     // 🔒 CONVERSÃO SEGURA de todos os valores
     const entrada = toSafeNumber(entry.entrada);
     const saida = toSafeNumber(entry.saida);

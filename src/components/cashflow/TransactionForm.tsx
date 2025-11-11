@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { TransactionType } from '../../types/cashflow';
 
 interface TransactionFormProps {
@@ -35,7 +36,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
     setCategory('');
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         <h3 className="text-lg font-semibold mb-4">Nova Transação</h3>
@@ -145,6 +146,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -315,9 +315,13 @@ export const useCashFlowStore = create<CashFlowStore>()(
       },
 
       getSaldoInicial: (monthStr: string) => {
+        console.log(`[CashFlow] 🔍 getSaldoInicial(${monthStr}) - INICIANDO`);
         const date = new Date(monthStr + '-01');
+        console.log(`[CashFlow] 🔍 Data criada:`, date.toISOString(), 'Mês JS:', date.getMonth(), 'Ano:', date.getFullYear());
         date.setMonth(date.getMonth() - 1);
+        console.log(`[CashFlow] 🔍 Data após setMonth(-1):`, date.toISOString(), 'Mês JS:', date.getMonth(), 'Ano:', date.getFullYear());
         const prevMonthStr = formatMonthString(date);
+        console.log(`[CashFlow] 🔍 prevMonthStr calculado:`, prevMonthStr);
 
         const prevMonth = get().months[prevMonthStr];
 

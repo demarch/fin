@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import ToastContainer from './components/common/ToastContainer';
 import { useToastStore } from './hooks/useToast';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Header from './components/common/Header';
 import Dashboard from './pages/Dashboard';
 import CashFlow from './pages/CashFlow';
@@ -16,21 +17,23 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Header />
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/fluxo-caixa" element={<CashFlow />} />
-            <Route path="/emprestimos" element={<Loans />} />
-            <Route path="/cartoes" element={<CreditCards />} />
-            <Route path="/investimentos" element={<Investments />} />
-            <Route path="/configuracoes" element={<Settings />} />
-            <Route path="/test" element={<TestCalculations />} />
-          </Routes>
-          <ToastContainer toasts={toasts} onClose={removeToast} />
-        </div>
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <Header />
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/fluxo-caixa" element={<CashFlow />} />
+              <Route path="/emprestimos" element={<Loans />} />
+              <Route path="/cartoes" element={<CreditCards />} />
+              <Route path="/investimentos" element={<Investments />} />
+              <Route path="/configuracoes" element={<Settings />} />
+              <Route path="/test" element={<TestCalculations />} />
+            </Routes>
+            <ToastContainer toasts={toasts} onClose={removeToast} />
+          </div>
+        </Router>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

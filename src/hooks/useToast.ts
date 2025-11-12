@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ToastType } from '../components/common/Toast';
+import type { ToastType } from '../components/common/Toast';
 
 interface Toast {
   id: string;

@@ -91,10 +91,7 @@ export function generateRecurringTransactionsForMonth(
   targetMonth: string, // formato: "2024-11"
   parentRecurringId: string
 ): Transaction[] {
-  // console.log(`[Recurrence] 🔄 generateRecurringTransactionsForMonth para ${targetMonth}`, {
-    description: baseTransaction.description,
-    parentId: parentRecurringId
-  });
+  // Gerando transações recorrentes para o mês
 
   if (!baseTransaction.recurrencePattern) {
     // console.log(`[Recurrence] ⚠️ Sem padrão de recorrência`);
@@ -102,13 +99,6 @@ export function generateRecurringTransactionsForMonth(
   }
 
   const pattern = baseTransaction.recurrencePattern;
-  // console.log(`[Recurrence] Pattern:`, {
-    frequency: pattern.frequency,
-    startDate: pattern.startDate,
-    endDate: pattern.endDate,
-    dayOfMonth: pattern.dayOfMonth,
-    useLastDayOfMonth: pattern.useLastDayOfMonth
-  });
 
   const [year, month] = targetMonth.split('-').map(Number);
   // Usar UTC para evitar problemas de timezone

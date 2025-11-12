@@ -20,16 +20,16 @@ class Logger {
     this.context = context;
   }
 
-  private formatMessage(level: LogLevel, message: string, options?: LoggerOptions): string {
+  private formatMessage(_level: LogLevel, message: string, options?: LoggerOptions): string {
     const ctx = options?.context || this.context;
     const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
     return `[${timestamp}] [${ctx}] ${message}`;
   }
 
-  private shouldLog(level: LogLevel): boolean {
+  private shouldLog(_level: LogLevel): boolean {
     // Em produção, apenas errors
     if (!isDevelopment) {
-      return level === 'error';
+      return _level === 'error';
     }
     // Em desenvolvimento, tudo
     return true;

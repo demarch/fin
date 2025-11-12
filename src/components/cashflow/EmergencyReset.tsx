@@ -39,7 +39,7 @@ export const EmergencyReset: React.FC = () => {
     // Força atualização
     useCashFlowStore.setState({ months: updatedMonths });
 
-    // console.log('✅ Mês recalculado com saldo inicial zero:', {
+    console.log('✅ Mês recalculado com saldo inicial zero:', {
       mes: currentMonth,
       primeiroSaldo: entriesCorrigidas[0]?.saldo,
       saldoFinal: totals.saldoFinal,
@@ -57,7 +57,7 @@ export const EmergencyReset: React.FC = () => {
       return;
     }
 
-    // console.log('🔧 Iniciando reset completo de todos os meses...');
+    console.log('🔧 Iniciando reset completo de todos os meses...');
 
     const monthKeys = Object.keys(store.months).sort();
     const LIMITE_ABSURDO = 100000; // R$ 100 mil
@@ -76,7 +76,7 @@ export const EmergencyReset: React.FC = () => {
       // Verificar se tem saldo absurdo inicial
       const primeiroSaldo = monthData.entries[0]?.saldo || 0;
       if (Math.abs(primeiroSaldo) > LIMITE_ABSURDO) {
-        // console.warn(`⚠️ Mês ${monthKey} com saldo absurdo (${primeiroSaldo}), será deletado`);
+        console.warn(`⚠️ Mês ${monthKey} com saldo absurdo (${primeiroSaldo}), será deletado`);
         deletados++;
         return; // Pula este mês
       }
@@ -98,7 +98,7 @@ export const EmergencyReset: React.FC = () => {
       saldoAcumulado = totals.saldoFinal;
       corrigidos++;
 
-      // console.log(`✅ Mês ${monthKey} recalculado:`, {
+      console.log(`✅ Mês ${monthKey} recalculado:`, {
         saldoInicial: index === 0 ? 0 : Object.values(newMonths)[index - 1]?.totals.saldoFinal,
         saldoFinal: totals.saldoFinal,
       });
@@ -109,7 +109,7 @@ export const EmergencyReset: React.FC = () => {
 
     const mensagem = `✅ Reset completo concluído!\n\n- ${corrigidos} meses recalculados\n- ${deletados} meses deletados\n- Saldo final: R$ ${saldoAcumulado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
-    // console.log(mensagem);
+    console.log(mensagem);
     alert(mensagem);
 
     setShowOptions(false);
@@ -139,7 +139,7 @@ export const EmergencyReset: React.FC = () => {
 
       // Se tem saldo absurdo, deleta
       if (saldoFinal > LIMITE_ABSURDO || primeiroSaldo > LIMITE_ABSURDO) {
-        // console.warn(`🗑️ Deletando mês corrompido: ${monthKey} (saldo: ${saldoFinal})`);
+        console.warn(`🗑️ Deletando mês corrompido: ${monthKey} (saldo: ${saldoFinal})`);
         deletados++;
       } else {
         // Mantém o mês

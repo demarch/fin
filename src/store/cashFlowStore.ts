@@ -124,10 +124,19 @@ export const useCashFlowStore = create<CashFlowStore>()(
           return; // Month already exists (e foi validado/corrigido se necessário)
         }
 
-        const date = new Date(monthStr + '-01');
+        // 🔒 USAR parseMonthString para evitar problemas de timezone
+        const date = parseMonthString(monthStr);
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const monthName = getMonthName(date.getMonth());
+
+        console.log(`[CashFlow] 📅 Inicializando mês ${monthStr}:`, {
+          monthStr,
+          year,
+          month,
+          monthName,
+          dateCreated: date.toISOString()
+        });
 
         const entries = createEmptyMonthEntries(year, month);
         const saldoInicial = get().getSaldoInicial(monthStr);

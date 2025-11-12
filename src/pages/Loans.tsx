@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, HandCoins } from 'lucide-react';
 import { useLoansStore } from '../store/loansStore';
 import Card from '../components/common/Card';
 import LoanForm from '../components/loans/LoanForm';
 import LoanRow from '../components/loans/LoanRow';
 import { formatCurrency } from '../utils/formatters';
+import { EmptyState } from '../components/common';
 
 export default function Loans() {
   const [showForm, setShowForm] = useState(false);
@@ -83,17 +84,15 @@ export default function Loans() {
         {/* Loans Table */}
         <Card>
           {loans.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">
-                Nenhum empréstimo cadastrado ainda.
-              </p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="text-primary hover:text-blue-600 font-medium"
-              >
-                Adicionar primeiro empréstimo
-              </button>
-            </div>
+            <EmptyState
+              icon={HandCoins}
+              title="Nenhum empréstimo cadastrado"
+              description="Comece a gerenciar seus empréstimos e parcelas de forma organizada."
+              action={{
+                label: 'Adicionar Primeiro Empréstimo',
+                onClick: () => setShowForm(true),
+              }}
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full">

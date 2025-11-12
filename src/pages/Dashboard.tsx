@@ -1,15 +1,17 @@
-import { useEffect, useMemo } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, CreditCard, PiggyBank, BarChart3 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { TrendingUp, TrendingDown, DollarSign, CreditCard, PiggyBank, BarChart3, Inbox } from 'lucide-react';
 import { useCashFlowStore } from '../store/cashFlowStore';
 import { useLoansStore } from '../store/loansStore';
 import { formatCurrency, formatMonthString } from '../utils/formatters';
 import { calculateMonthTotalsUpToDay } from '../utils/calculations';
 import SummaryCard from '../components/dashboard/SummaryCard';
 import Card from '../components/common/Card';
+import { SkeletonCard, EmptyState } from '../components/common';
 
 export default function Dashboard() {
   const { months, currentMonth, initializeMonth, setCurrentMonth } = useCashFlowStore();
   const { getTotalRemainingAmount } = useLoansStore();
+  const [isLoading, setIsLoading] = useState(true);
 
   // 🔒 GARANTIR que sempre mostra dados do mês atual
   useEffect(() => {
@@ -25,6 +27,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     initializeMonth(currentMonth);
+    // Simulate loading time for better UX feedback
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 300);
+    return () => clearTimeout(timer);
   }, [currentMonth, initializeMonth]);
 
   const monthData = months[currentMonth];
@@ -64,18 +70,25 @@ export default function Dashboard() {
   const availableForInvestment = (totalEntradas * investmentPercentage) / 100;
 
   // Calculate performance (entradas - saidas)
-  const performance = currentDayTotals.totalEntradas - currentDayTotals.totalSaidas;
+  const performance = useMemo(
+    () => currentDayTotals.totalEntradas - currentDayTotals.totalSaidas,
+    [currentDayTotals]
+  );
 
-  // Get last 6 months for trend
-  const last6Months = Object.keys(months)
-    .sort()
-    .slice(-6)
-    .map((key) => ({
-      month: months[key].monthName,
-      saldo: months[key].totals.saldoFinal,
-      entradas: months[key].totals.totalEntradas,
-      saidas: months[key].totals.totalSaidas,
-    }));
+  // Get last 6 months for trend (memoized to avoid recalculation)
+  const last6Months = useMemo(
+    () =>
+      Object.keys(months)
+        .sort()
+        .slice(-6)
+        .map((key) => ({
+          month: months[key].monthName,
+          saldo: months[key].totals.saldoFinal,
+          entradas: months[key].totals.totalEntradas,
+          saidas: months[key].totals.totalSaidas,
+        })),
+    [months]
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -136,7 +149,9 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Months Overview */}
-        {last6Months.length > 0 && (
+        {isLoading ? (
+          <SkeletonCard className="mb-8" />
+        ) : last6Months.length > 0 ? (
           <Card title="Histórico Recente" subtitle="Últimos 6 meses">
             <div className="overflow-x-auto">
               <table className="min-w-full">
@@ -181,6 +196,16 @@ export default function Dashboard() {
               </table>
             </div>
           </Card>
+        ) : (
+          <EmptyState
+            icon={Inbox}
+            title="Nenhum histórico disponível"
+            description="Comece a registrar suas movimentações para visualizar o histórico."
+            action={{
+              label: 'Ir para Fluxo de Caixa',
+              onClick: () => window.location.href = '/fluxo-caixa',
+            }}
+          />
         )}
 
         {/* Quick Actions */}

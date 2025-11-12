@@ -23,6 +23,11 @@ export function getNextOccurrence(
       break;
 
     case 'monthly':
+      // Se usar último dia do mês, setar para dia 1 antes de avançar
+      // Isso evita problemas quando o mês atual tem mais dias que o próximo
+      if (pattern.useLastDayOfMonth) {
+        next.setDate(1);
+      }
       next.setMonth(next.getMonth() + 1);
       if (pattern.useLastDayOfMonth) {
         // Obter o último dia do mês
@@ -34,6 +39,11 @@ export function getNextOccurrence(
       break;
 
     case 'quarterly':
+      // Se usar último dia do mês, setar para dia 1 antes de avançar
+      // Isso evita problemas quando o mês atual tem mais dias que o próximo
+      if (pattern.useLastDayOfMonth) {
+        next.setDate(1);
+      }
       next.setMonth(next.getMonth() + 3);
       if (pattern.useLastDayOfMonth) {
         // Obter o último dia do mês
@@ -45,6 +55,11 @@ export function getNextOccurrence(
       break;
 
     case 'yearly':
+      // Se usar último dia do mês, setar para dia 1 antes de avançar
+      // Isso evita problemas quando o mês atual tem mais dias que o próximo
+      if (pattern.useLastDayOfMonth) {
+        next.setDate(1);
+      }
       next.setFullYear(next.getFullYear() + 1);
       if (pattern.useLastDayOfMonth) {
         // Obter o último dia do mês

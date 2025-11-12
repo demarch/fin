@@ -74,6 +74,41 @@ Todos os dados são armazenados localmente (LocalStorage), garantindo privacidad
 - ✅ Ações rápidas para navegação
 - ✅ Dicas financeiras
 
+### 🌐 Internacionalização (i18n)
+- ✅ Suporte a 3 idiomas: Português (BR), Inglês (US), Espanhol (ES)
+- ✅ Detecção automática do idioma do navegador
+- ✅ Seletor de idioma no header com flags
+- ✅ Persistência de preferência do usuário
+- ✅ Traduções em 33+ strings por idioma
+- ✅ Suporte a interpolação de valores
+- ✅ Fallback automático para português
+
+### 🎨 Tema Escuro (Dark Mode)
+- ✅ Três modos: Light, Dark e System
+- ✅ Detecção automática de preferência do sistema (prefers-color-scheme)
+- ✅ Toggle de tema no header
+- ✅ Persistência de preferência do usuário
+- ✅ Listeners em tempo real para mudanças do SO
+- ✅ Aplicação consistente em 16+ componentes
+- ✅ Transições suaves entre temas
+
+### ♿ Acessibilidade (A11y)
+- ✅ Focus trap em modais
+- ✅ Suporte a navegação por teclado (Tab, Shift+Tab, Esc)
+- ✅ Atributos ARIA (role, aria-label, aria-pressed, etc.)
+- ✅ Focus rings visíveis em elementos interativos
+- ✅ Notificações com role="alert"
+- ✅ Tags HTML semânticas (header, nav, button)
+- ✅ Hooks customizados (useFocusTrap, useKeyboardShortcut)
+
+### 🛡️ Tratamento de Erros e Logs
+- ✅ Error Boundary completo com UI amigável
+- ✅ Sistema de notificações (Toast) com 4 tipos
+- ✅ Sistema de logging estruturado (9 loggers especializados)
+- ✅ Mensagens de erro amigáveis ao usuário
+- ✅ Auto-dismiss em notificações
+- ✅ Logs condicionais (dev vs prod)
+
 ### ⚙️ Configurações
 - ✅ Exportar dados completos (JSON)
 - ✅ Importar dados de backup (JSON)
@@ -105,6 +140,10 @@ Todos os dados são armazenados localmente (LocalStorage), garantindo privacidad
 - **date-fns 4.1.0** - Manipulação de datas
 - **Recharts 3.3.0** - Gráficos e visualizações
 - **XLSX 0.18.5** - Exportação para Excel
+
+### Internacionalização e Temas
+- **react-i18next 15.3.3** - Sistema de i18n completo
+- **i18next 24.4.0** - Framework de internacionalização
 
 ### Qualidade de Código
 - **ESLint 9.36.0** - Linting
@@ -328,23 +367,53 @@ Layout adaptável com Tailwind CSS Grid e Flexbox.
 
 ---
 
+## 🎉 Progresso Recente
+
+### Últimas Implementações (Novembro 2025)
+
+**✅ Concluídas:**
+1. **Internacionalização (i18n)** - Sistema completo com 3 idiomas (pt-BR, en-US, es-ES)
+2. **Dark Mode** - Tema escuro completo com detecção do sistema
+3. **Acessibilidade** - Focus trap, keyboard shortcuts, ARIA attributes
+4. **Error Handling** - Error Boundary + Sistema de Toast notifications
+5. **Logging System** - Logger estruturado com 9 loggers especializados
+6. **Console Cleanup** - Remoção de console.logs de produção
+
+**📊 Status Atual:**
+- **Funcionalidades Core**: 100% completas (Fluxo de Caixa, Cartões, Empréstimos, Investimentos)
+- **UX/UI Moderna**: 80% completa (i18n, dark mode, a11y)
+- **Qualidade de Código**: 60% completa (logging, error handling, falta testes)
+- **Performance**: 40% otimizada (falta memoization, virtualização)
+
+**🎯 Próximas Prioridades:**
+1. Implementar suite de testes automatizados (0% → 80%)
+2. Estados de carregamento e feedback visual
+3. Otimização de performance (React.memo, useMemo, useCallback)
+4. Sistema de categorias para transações
+5. Expandir traduções i18n para telas específicas
+
+---
+
 ## 🚧 Roadmap - Próximos Passos
 
 ### 🔴 PRIORIDADE ALTA - Qualidade e Estabilidade
 
 #### 1. Testes Automatizados
-**Status**: ✅ Parcialmente implementado
+**Status**: ⚠️ Infraestrutura configurada, mas SEM testes implementados
 **Impacto**: CRÍTICO
 - [x] Configurar **Vitest** + **React Testing Library**
-- [x] Testes unitários básicos para utils (formatters - 12 testes)
+- [ ] Instalar dependências de teste (vitest não está instalado)
+- [ ] Criar arquivo de setup (`src/test/setup.ts`)
+- [ ] Testes unitários básicos para utils (formatters, calculations, recurrence)
+- [ ] Testes unitários para hooks customizados (useFocusTrap, useKeyboardShortcut, useToast)
 - [ ] Testes unitários para stores (Zustand)
-- [ ] Testes unitários completos para utils (calculations, recurrence)
+- [ ] Testes de componentes React (Error Boundary, Toast, Modal)
 - [ ] Testes de integração para fluxos principais
 - [ ] Testes E2E com **Playwright** ou **Cypress**
 - [ ] Configurar coverage mínimo (80%)
 - [ ] **Meta**: 100+ testes, >80% coverage
 
-**Progresso**: Vitest configurado, 12 testes passando, setup completo com mocks
+**Progresso**: Vitest configurado no arquivo de config, mas vitest não instalado. NENHUM teste implementado ainda.
 **Benefícios**: Previne regressões, facilita refatorações, aumenta confiança no código.
 
 ---
@@ -364,18 +433,20 @@ Layout adaptável com Tailwind CSS Grid e Flexbox.
 ---
 
 #### 3. Tratamento de Erros Robusto
-**Status**: ✅ Parcialmente implementado
+**Status**: ✅ Implementado (核心功能)
 **Impacto**: ALTO
-- [x] Implementar **Error Boundaries** (React)
-- [x] Criar sistema de notificações de erro (toast/snackbar)
+- [x] Implementar **Error Boundaries** (React) - completo com UI amigável
+- [x] Criar sistema de notificações de erro (toast/snackbar) - 4 tipos (success, error, warning, info)
+- [x] Sistema de logging estruturado com 9 loggers especializados
 - [ ] Adicionar tratamento de erros em operações assíncronas
-- [ ] Validação de entrada em todos os formulários
+- [ ] Validação de entrada em todos os formulários com feedback visual
 - [ ] Tratamento de erros de parse JSON (import/export)
 - [x] Fallback para dados corrompidos no localStorage (já existe)
 - [x] Mensagens de erro amigáveis ao usuário
 
-**Progresso**: ErrorBoundary implementado, sistema de Toast completo com 4 tipos
-**Benefícios**: Melhor UX, menos crashes, maior confiabilidade.
+**Progresso**: ErrorBoundary completo, sistema de Toast com Zustand, Logger com 5 níveis
+**Arquivos**: `ErrorBoundary.tsx`, `Toast.tsx`, `ToastContainer.tsx`, `useToast.ts`, `logger.ts`
+**Benefícios**: Melhor UX, menos crashes, maior confiabilidade, debugging facilitado.
 
 ---
 
@@ -429,48 +500,68 @@ Layout adaptável com Tailwind CSS Grid e Flexbox.
 ---
 
 #### 7. Acessibilidade (A11y)
-**Status**: ❌ Não implementado
+**Status**: ✅ Implementado (70% completo)
 **Impacto**: ALTO
-- [ ] Adicionar atributos ARIA (`aria-label`, `aria-describedby`, etc)
-- [ ] Suporte completo a navegação por teclado (Tab, Enter, Esc)
-- [ ] Focus management (foco visível, trap de foco em modais)
-- [ ] Atributos `alt` em imagens
-- [ ] Atributos `role` em elementos interativos
-- [ ] Contraste de cores conforme WCAG 2.1 (AAA)
+- [x] Adicionar atributos ARIA (`aria-label`, `aria-describedby`, `aria-pressed`, `role`, etc) - 15+ instâncias
+- [x] Suporte a navegação por teclado (Tab, Shift+Tab, Esc)
+- [x] Focus management (foco visível com focus rings, trap de foco em modais)
+- [x] Hooks customizados: `useFocusTrap`, `useKeyboardShortcut`
+- [x] Atributos `role` em elementos interativos (dialog, alert, document)
+- [x] Tags HTML semânticas (header, nav, button, input)
+- [x] Focus rings visíveis em todos elementos interativos
+- [x] Modal com role="dialog" e aria-modal="true"
+- [x] Toast com role="alert"
+- [ ] Skip links para navegação rápida
+- [ ] Contraste de cores conforme WCAG 2.1 (AAA) - parcialmente implementado
 - [ ] Testes com leitores de tela (NVDA, JAWS, VoiceOver)
-- [ ] Labels descritivos em formulários
-- [ ] Mensagens de erro associadas a inputs (`aria-invalid`)
+- [ ] Mensagens de erro associadas a inputs (`aria-invalid`, `aria-describedby` em erros)
+- [ ] Testes automatizados de acessibilidade (axe-core)
 
+**Progresso**: Fundamentos sólidos implementados, falta polimento e testes
+**Arquivos**: `useFocusTrap.ts`, `useKeyboardShortcut.ts`, `Modal.tsx`, `Toast.tsx`, `ThemeToggle.tsx`
 **Benefícios**: Inclusão, conformidade legal, melhor UX para todos.
 
 ---
 
 #### 8. Internacionalização (i18n)
-**Status**: ❌ Não implementado (apenas pt-BR)
+**Status**: ✅ Concluído (funcionalidade básica completa)
 **Impacto**: BAIXO (curto prazo) / ALTO (longo prazo)
-- [ ] Configurar **react-i18next** ou **react-intl**
-- [ ] Extrair todas as strings para arquivos de tradução
-- [ ] Suporte a pt-BR, en-US, es-ES
-- [ ] Formatação de moeda por locale
-- [ ] Formatação de datas por locale
-- [ ] Seletor de idioma nas configurações
-- [ ] Persistir preferência de idioma
+- [x] Configurar **react-i18next** (v15.3.3) + **i18next** (v24.4.0)
+- [x] Extrair strings para arquivos de tradução (33+ strings por idioma)
+- [x] Suporte a pt-BR, en-US, es-ES
+- [x] Detecção automática de idioma do navegador
+- [x] Seletor de idioma no header com flags de países
+- [x] Persistir preferência de idioma (localStorage: 'fin-language-preference')
+- [x] Fallback automático para português (BR)
+- [x] Hook `useTranslation()` integrado em múltiplos componentes
+- [x] Setter de idioma no HTML root (document.documentElement.lang)
+- [ ] Formatação de moeda por locale (ainda usa formato BR para todos)
+- [ ] Formatação de datas por locale (ainda usa date-fns sem i18n)
+- [ ] Expandir traduções para telas específicas (CashFlow, Loans, Investments)
 
+**Progresso**: Fundamentos completos, traduções básicas implementadas
+**Arquivos**: `i18n/config.ts`, `i18n/locales/{pt-BR,en-US,es-ES}.json`, `LanguageSwitcher.tsx`
 **Benefícios**: Alcance internacional, maior base de usuários.
 
 ---
 
 #### 9. Tema Escuro (Dark Mode)
-**Status**: ❌ Não implementado
+**Status**: ✅ Concluído
 **Impacto**: MÉDIO
-- [ ] Configurar dark mode no Tailwind CSS
-- [ ] Criar paleta de cores para tema escuro
-- [ ] Toggle de tema no header ou configurações
-- [ ] Persistir preferência do usuário
-- [ ] Suporte a preferência do sistema (`prefers-color-scheme`)
-- [ ] Animação suave de transição entre temas
-- [ ] Garantir contraste adequado em ambos os temas
+- [x] Configurar dark mode no Tailwind CSS (`darkMode: 'class'`)
+- [x] Criar paleta de cores para tema escuro (gray-900, gray-800, gray-100)
+- [x] Toggle de tema no header com 3 opções (Light/Dark/System)
+- [x] Componentes de UI: `ThemeToggle` e `ThemeToggleIcon`
+- [x] Persistir preferência do usuário (localStorage: 'fin-theme-preference')
+- [x] Suporte a preferência do sistema (`prefers-color-scheme`)
+- [x] Listeners em tempo real para mudanças do SO
+- [x] Context Provider completo (`ThemeContext`)
+- [x] Classes `dark:` aplicadas em 16+ componentes
+- [x] Transições suaves com `transition-colors`
+- [x] Garantir contraste adequado em ambos os temas
 
+**Progresso**: Implementação completa e funcional
+**Arquivos**: `ThemeContext.tsx`, `ThemeToggle.tsx`, `tailwind.config.js`, `App.tsx`
 **Benefícios**: Conforto visual, economia de bateria (OLED), modernidade.
 
 ---
@@ -786,29 +877,29 @@ Layout adaptável com Tailwind CSS Grid e Flexbox.
 
 ## 📈 Cronograma Sugerido (6-12 meses)
 
-### Fase 1 - Estabilização (Mês 1-2)
-1. Testes automatizados
-2. Limpeza de console logs
-3. Tratamento de erros robusto
-4. Validação e sanitização
+### ✅ Fase 1 - Estabilização (Mês 1-2) - PARCIALMENTE CONCLUÍDA
+1. ⚠️ Testes automatizados (apenas infraestrutura)
+2. ✅ Limpeza de console logs
+3. ✅ Tratamento de erros robusto (ErrorBoundary + Toast + Logger)
+4. ⚠️ Validação e sanitização (parcial)
 
-### Fase 2 - UX Essencial (Mês 3-4)
-5. Estados de carregamento
-6. Otimização de performance
-7. Acessibilidade (A11y)
-8. Tema escuro
+### ✅ Fase 2 - UX Essencial (Mês 3-4) - PARCIALMENTE CONCLUÍDA
+5. ❌ Estados de carregamento
+6. ⚠️ Otimização de performance (5 usos de memo/callback)
+7. ✅ Acessibilidade (A11y) - 70% completo
+8. ✅ Tema escuro (100% completo)
 
-### Fase 3 - Recursos Avançados (Mês 5-8)
-9. Sistema de categorias
-10. Gráficos e visualizações
-11. Relatórios e exportações
-12. Metas e orçamentos
+### 🔄 Fase 3 - Recursos Avançados (Mês 5-8) - EM ANDAMENTO
+9. ❌ Sistema de categorias
+10. ⚠️ Gráficos e visualizações (Recharts instalado, pouco usado)
+11. ⚠️ Relatórios e exportações (JSON OK, XLSX instalado mas não usado)
+12. ❌ Metas e orçamentos
+13. ✅ Internacionalização (100% básico completo)
 
-### Fase 4 - Escala e Polimento (Mês 9-12)
-13. PWA
-14. Internacionalização
-15. CI/CD e deploy automático
-16. Importação de extratos
+### 📅 Fase 4 - Escala e Polimento (Mês 9-12) - PLANEJADA
+14. ❌ PWA
+15. ❌ CI/CD e deploy automático
+16. ❌ Importação de extratos
 
 ---
 

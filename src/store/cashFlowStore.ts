@@ -698,7 +698,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
 
           // Adicionar cada transação gerada ao dia correspondente
           generatedTransactions.forEach((transaction) => {
-            const day = new Date(transaction.createdAt).getDate();
+            const day = new Date(transaction.createdAt).getUTCDate();
 
             // Verificar se a transação já existe (evitar duplicatas)
             const dayEntry = monthData.entries.find((e) => e.day === day);

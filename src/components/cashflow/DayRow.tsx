@@ -19,6 +19,17 @@ interface DayRowProps {
       cartaoCreditoId?: string;
       parcelado?: boolean;
       numeroParcelas?: number;
+    },
+    investmentData?: {
+      isInvestimento: boolean;
+      tipo?: string;
+      banco?: string;
+      nomeAcao?: string;
+      quantidade?: number;
+      valorUnitario?: number;
+      observacoes?: string;
+      vencimento?: string;
+      taxa?: number;
     }
   ) => void;
   onDeleteTransaction: (transactionId: string) => void;
@@ -51,9 +62,20 @@ export default function DayRow({
       cartaoCreditoId?: string;
       parcelado?: boolean;
       numeroParcelas?: number;
+    },
+    investmentData?: {
+      isInvestimento: boolean;
+      tipo?: string;
+      banco?: string;
+      nomeAcao?: string;
+      quantidade?: number;
+      valorUnitario?: number;
+      observacoes?: string;
+      vencimento?: string;
+      taxa?: number;
     }
   ) => {
-    onAddTransaction(type, description, amount, category, recurrencePattern, creditCardData);
+    onAddTransaction(type, description, amount, category, recurrencePattern, creditCardData, investmentData);
     setShowTransactionForm(false);
   };
 

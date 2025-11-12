@@ -17,6 +17,17 @@ interface MonthGridProps {
       cartaoCreditoId?: string;
       parcelado?: boolean;
       numeroParcelas?: number;
+    },
+    investmentData?: {
+      isInvestimento: boolean;
+      tipo?: string;
+      banco?: string;
+      nomeAcao?: string;
+      quantidade?: number;
+      valorUnitario?: number;
+      observacoes?: string;
+      vencimento?: string;
+      taxa?: number;
     }
   ) => void;
   onDeleteTransaction: (day: number, transactionId: string) => void;
@@ -62,8 +73,8 @@ export default function MonthGrid({ monthData, onUpdateEntry, onAddTransaction, 
               entry={entry}
               monthStr={monthData.month}
               onUpdate={(field, value) => onUpdateEntry(entry.day, field, value)}
-              onAddTransaction={(type, description, amount, category, recurrencePattern) =>
-                onAddTransaction(entry.day, type, description, amount, category, recurrencePattern)
+              onAddTransaction={(type, description, amount, category, recurrencePattern, creditCardData, investmentData) =>
+                onAddTransaction(entry.day, type, description, amount, category, recurrencePattern, creditCardData, investmentData)
               }
               onDeleteTransaction={(transactionId) =>
                 onDeleteTransaction(entry.day, transactionId)

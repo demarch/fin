@@ -23,49 +23,49 @@ export function getNextOccurrence(
       break;
 
     case 'monthly':
-      // Se usar último dia do mês, setar para dia 1 antes de avançar
-      // Isso evita problemas quando o mês atual tem mais dias que o próximo
-      if (pattern.useLastDayOfMonth) {
-        next.setDate(1);
-      }
+      // SEMPRE setar para dia 1 antes de avançar o mês
+      // Isso evita problemas de overflow (ex: 31/jan + 1 mês = 3/mar)
+      next.setDate(1);
       next.setMonth(next.getMonth() + 1);
+
       if (pattern.useLastDayOfMonth) {
         // Obter o último dia do mês
         const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
         next.setDate(lastDay);
       } else if (pattern.dayOfMonth) {
+        // Agora sim setar para o dia desejado
         next.setDate(pattern.dayOfMonth);
       }
       break;
 
     case 'quarterly':
-      // Se usar último dia do mês, setar para dia 1 antes de avançar
-      // Isso evita problemas quando o mês atual tem mais dias que o próximo
-      if (pattern.useLastDayOfMonth) {
-        next.setDate(1);
-      }
+      // SEMPRE setar para dia 1 antes de avançar os meses
+      // Isso evita problemas de overflow
+      next.setDate(1);
       next.setMonth(next.getMonth() + 3);
+
       if (pattern.useLastDayOfMonth) {
         // Obter o último dia do mês
         const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
         next.setDate(lastDay);
       } else if (pattern.dayOfMonth) {
+        // Agora sim setar para o dia desejado
         next.setDate(pattern.dayOfMonth);
       }
       break;
 
     case 'yearly':
-      // Se usar último dia do mês, setar para dia 1 antes de avançar
-      // Isso evita problemas quando o mês atual tem mais dias que o próximo
-      if (pattern.useLastDayOfMonth) {
-        next.setDate(1);
-      }
+      // SEMPRE setar para dia 1 antes de avançar o ano
+      // Isso evita problemas de overflow (ex: 29/fev em ano não bissexto)
+      next.setDate(1);
       next.setFullYear(next.getFullYear() + 1);
+
       if (pattern.useLastDayOfMonth) {
         // Obter o último dia do mês
         const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
         next.setDate(lastDay);
       } else if (pattern.dayOfMonth) {
+        // Agora sim setar para o dia desejado
         next.setDate(pattern.dayOfMonth);
       }
       break;

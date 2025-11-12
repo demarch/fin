@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Plus, Filter, TrendingUp, DollarSign } from 'lucide-react';
 import { useInvestmentStore } from '../store/investmentStore';
 import { InvestmentForm } from '../components/investment/InvestmentForm';
@@ -29,41 +29,46 @@ export const Investments: React.FC = () => {
   const [filtroAtivo, setFiltroAtivo] = useState<'todos' | 'ativos' | 'resgatados'>('ativos');
   const [showFilters, setShowFilters] = useState(false);
 
-  const bancosUnicos = getBancosUnicos();
-  const summary = getSummary();
+  const bancosUnicos = useMemo(() => getBancosUnicos(), [getBancosUnicos]);
+  const summary = useMemo(() => getSummary(), [getSummary]);
 
-  // Aplicar filtros
-  const filtros: InvestmentFilter = {};
-  if (filtroTipo) filtros.tipo = filtroTipo;
-  if (filtroBanco) filtros.banco = filtroBanco;
-  if (filtroAtivo === 'ativos') filtros.ativo = true;
-  if (filtroAtivo === 'resgatados') filtros.ativo = false;
+  // Aplicar filtros (memoized to avoid recalculation)
+  const filtros = useMemo<InvestmentFilter>(() => {
+    const f: InvestmentFilter = {};
+    if (filtroTipo) f.tipo = filtroTipo;
+    if (filtroBanco) f.banco = filtroBanco;
+    if (filtroAtivo === 'ativos') f.ativo = true;
+    if (filtroAtivo === 'resgatados') f.ativo = false;
+    return f;
+  }, [filtroTipo, filtroBanco, filtroAtivo]);
 
-  const investimentos =
-    Object.keys(filtros).length > 0 ? getInvestimentosFiltrados(filtros) : getAllInvestimentos();
+  const investimentosFiltrados = useMemo(() => {
+    const investimentos =
+      Object.keys(filtros).length > 0 ? getInvestimentosFiltrados(filtros) : getAllInvestimentos();
 
-  const investimentosFiltrados =
-    filtroAtivo === 'ativos'
-      ? investimentos.filter((i) => i.ativo)
-      : filtroAtivo === 'resgatados'
-      ? investimentos.filter((i) => !i.ativo)
-      : investimentos;
+    if (filtroAtivo === 'ativos') {
+      return investimentos.filter((i) => i.ativo);
+    } else if (filtroAtivo === 'resgatados') {
+      return investimentos.filter((i) => !i.ativo);
+    }
+    return investimentos;
+  }, [filtros, filtroAtivo, getInvestimentosFiltrados, getAllInvestimentos]);
 
-  const handleAddInvestimento = () => {
+  const handleAddInvestimento = useCallback(() => {
     setEditingInvestment(undefined);
     setShowForm(true);
-  };
+  }, []);
 
-  const handleEditInvestimento = (investment: Investment) => {
+  const handleEditInvestimento = useCallback((investment: Investment) => {
     setEditingInvestment(investment);
     setShowForm(true);
-  };
+  }, []);
 
-  const handleDeleteInvestimento = (investment: Investment) => {
+  const handleDeleteInvestimento = useCallback((investment: Investment) => {
     if (window.confirm(`Tem certeza que deseja excluir o investimento "${investment.descricao}"? Isso também removerá o lançamento do fluxo de caixa.`)) {
       removerInvestimento(investment.id);
     }
-  };
+  }, []);
 
   const handleSubmit = (data: Omit<Investment, 'id' | 'createdAt'>) => {
     if (editingInvestment) {
@@ -86,14 +91,14 @@ export const Investments: React.FC = () => {
     new Date().toISOString().split('T')[0]
   );
 
-  const handleResgatar = (investment: Investment) => {
+  const handleResgatar = useCallback((investment: Investment) => {
     setResgatandoInvestment(investment);
     setValorResgate(investment.valor.toString());
     setDataResgate(new Date().toISOString().split('T')[0]);
     setShowResgateModal(true);
-  };
+  }, []);
 
-  const handleConfirmarResgate = () => {
+  const handleConfirmarResgate = useCallback(() => {
     if (!resgatandoInvestment) return;
 
     const valor = parseFloat(valorResgate);
@@ -106,7 +111,7 @@ export const Investments: React.FC = () => {
     setShowResgateModal(false);
     setResgatandoInvestment(undefined);
     setValorResgate('');
-  };
+  }, [resgatandoInvestment, valorResgate, dataResgate]);
 
   return (
     <div className="min-h-screen bg-gray-50">

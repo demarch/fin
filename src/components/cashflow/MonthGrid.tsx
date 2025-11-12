@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from 'react';
 import type { MonthlyData, TransactionType, RecurrencePattern } from '../../types/cashflow';
 import DayRow from './DayRow';
 import { formatCurrency } from '../../utils/formatters';
@@ -35,11 +36,60 @@ interface MonthGridProps {
 }
 
 export default function MonthGrid({ monthData, onUpdateEntry, onAddTransaction, onDeleteTransaction, onDeleteSeries }: MonthGridProps) {
-  const today = new Date();
-  const isCurrentMonth =
-    today.getFullYear() === monthData.year &&
-    today.getMonth() === new Date(monthData.month + '-01').getMonth();
+  const today = useMemo(() => new Date(), []);
+  const isCurrentMonth = useMemo(
+    () =>
+      today.getFullYear() === monthData.year &&
+      today.getMonth() === new Date(monthData.month + '-01').getMonth(),
+    [today, monthData.year, monthData.month]
+  );
   const currentDay = today.getDate();
+
+  // Memoize callbacks to prevent DayRow re-renders
+  const handleUpdateEntry = useCallback(
+    (day: number, field: keyof import('../../types/cashflow').DailyEntry, value: number) => {
+      onUpdateEntry(day, field, value);
+    },
+    [onUpdateEntry]
+  );
+
+  const handleAddTransaction = useCallback(
+    (
+      day: number,
+      type: TransactionType,
+      description: string,
+      amount: number,
+      category?: string,
+      recurrencePattern?: RecurrencePattern,
+      creditCardData?: {
+        isCartaoCredito: boolean;
+        cartaoCreditoId?: string;
+        parcelado?: boolean;
+        numeroParcelas?: number;
+      },
+      investmentData?: {
+        isInvestimento: boolean;
+        tipo?: string;
+        banco?: string;
+        nomeAcao?: string;
+        quantidade?: number;
+        valorUnitario?: number;
+        observacoes?: string;
+        vencimento?: string;
+        taxa?: number;
+      }
+    ) => {
+      onAddTransaction(day, type, description, amount, category, recurrencePattern, creditCardData, investmentData);
+    },
+    [onAddTransaction]
+  );
+
+  const handleDeleteTransaction = useCallback(
+    (day: number, transactionId: string) => {
+      onDeleteTransaction(day, transactionId);
+    },
+    [onDeleteTransaction]
+  );
 
   return (
     <div className="overflow-x-auto">
@@ -72,12 +122,12 @@ export default function MonthGrid({ monthData, onUpdateEntry, onAddTransaction, 
               key={entry.day}
               entry={entry}
               monthStr={monthData.month}
-              onUpdate={(field, value) => onUpdateEntry(entry.day, field, value)}
+              onUpdate={(field, value) => handleUpdateEntry(entry.day, field, value)}
               onAddTransaction={(type, description, amount, category, recurrencePattern, creditCardData, investmentData) =>
-                onAddTransaction(entry.day, type, description, amount, category, recurrencePattern, creditCardData, investmentData)
+                handleAddTransaction(entry.day, type, description, amount, category, recurrencePattern, creditCardData, investmentData)
               }
               onDeleteTransaction={(transactionId) =>
-                onDeleteTransaction(entry.day, transactionId)
+                handleDeleteTransaction(entry.day, transactionId)
               }
               onDeleteSeries={onDeleteSeries}
               isToday={isCurrentMonth && entry.day === currentDay}

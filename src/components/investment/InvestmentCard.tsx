@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Edit2, Trash2, TrendingUp, Calendar, DollarSign } from 'lucide-react';
 import type { Investment } from '../../types/investment';
 import { INVESTMENT_TYPE_LABELS, INVESTMENT_TYPE_COLORS } from '../../types/investment';
@@ -13,7 +13,7 @@ interface InvestmentCardProps {
   onResgatar?: (investment: Investment) => void;
 }
 
-export const InvestmentCard: React.FC<InvestmentCardProps> = ({
+export const InvestmentCard: React.FC<InvestmentCardProps> = memo(({
   investment,
   onEdit,
   onDelete,
@@ -181,4 +181,4 @@ export const InvestmentCard: React.FC<InvestmentCardProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import type { DailyEntry, TransactionType, RecurrencePattern } from '../../types/cashflow';
 import CurrencyInput from '../common/CurrencyInput';
 import { TransactionForm } from './TransactionForm';
@@ -37,7 +37,7 @@ interface DayRowProps {
   isToday?: boolean;
 }
 
-export default function DayRow({
+const DayRow = memo(function DayRow({
   entry,
   onUpdate,
   onAddTransaction,
@@ -200,4 +200,17 @@ export default function DayRow({
       )}
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison to avoid unnecessary re-renders
+  return (
+    prevProps.entry.day === nextProps.entry.day &&
+    prevProps.entry.entrada === nextProps.entry.entrada &&
+    prevProps.entry.saida === nextProps.entry.saida &&
+    prevProps.entry.diario === nextProps.entry.diario &&
+    prevProps.entry.saldo === nextProps.entry.saldo &&
+    prevProps.entry.transactions?.length === nextProps.entry.transactions?.length &&
+    prevProps.isToday === nextProps.isToday
+  );
+});
+
+export default DayRow;

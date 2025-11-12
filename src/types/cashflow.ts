@@ -25,6 +25,9 @@ export interface Transaction {
   cartaoCreditoId?: string; // ID do cartão de crédito usado
   creditCardTransactionId?: string; // ID da transação no store de cartão (para vincular)
   isFaturaConsolidada?: boolean; // Indica se é uma fatura consolidada (aparece no dia de vencimento)
+  // Campos de Investimento
+  isInvestimento?: boolean; // Indica se é uma despesa de investimento
+  investmentId?: string; // ID do investimento no store de investimentos (para vincular)
 }
 
 export interface DailyEntry {

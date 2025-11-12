@@ -39,6 +39,10 @@ interface CashFlowStore {
       cartaoCreditoId?: string;
       creditCardTransactionId?: string;
       isFaturaConsolidada?: boolean;
+    },
+    investmentData?: {
+      isInvestimento?: boolean;
+      investmentId?: string;
     }
   ) => void;
   updateTransaction: (monthStr: string, day: number, transactionId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => void;
@@ -491,9 +495,13 @@ export const useCashFlowStore = create<CashFlowStore>()(
           cartaoCreditoId?: string;
           creditCardTransactionId?: string;
           isFaturaConsolidada?: boolean;
+        },
+        investmentData?: {
+          isInvestimento?: boolean;
+          investmentId?: string;
         }
       ) => {
-        console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}${recurrencePattern ? ' (RECORRENTE)' : ''}${creditCardData?.isCartaoCredito ? ' (CARTÃO)' : ''}`);
+        console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}${recurrencePattern ? ' (RECORRENTE)' : ''}${creditCardData?.isCartaoCredito ? ' (CARTÃO)' : ''}${investmentData?.isInvestimento ? ' (INVESTIMENTO)' : ''}`);
 
         const state = get();
         const monthData = state.months[monthStr];
@@ -503,7 +511,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
           get().initializeMonth(monthStr);
           // Tentar novamente após inicialização
           requestAnimationFrame(() => {
-            get().addTransaction(monthStr, day, type, description, amount, category, recurrencePattern, creditCardData);
+            get().addTransaction(monthStr, day, type, description, amount, category, recurrencePattern, creditCardData, investmentData);
           });
           return;
         }
@@ -523,6 +531,9 @@ export const useCashFlowStore = create<CashFlowStore>()(
           cartaoCreditoId: creditCardData?.cartaoCreditoId,
           creditCardTransactionId: creditCardData?.creditCardTransactionId,
           isFaturaConsolidada: creditCardData?.isFaturaConsolidada,
+          // Campos de investimento
+          isInvestimento: investmentData?.isInvestimento,
+          investmentId: investmentData?.investmentId,
         };
 
         // Se for recorrente, armazenar no registro de transações recorrentes

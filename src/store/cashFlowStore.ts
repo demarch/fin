@@ -954,7 +954,13 @@ export const useCashFlowStore = create<CashFlowStore>()(
     }),
     {
       name: 'cashflow-storage',
-      version: 7, // 🔧 VERSÃO 7 - Adiciona suporte a transações recorrentes
+      version: 8, // 🔧 VERSÃO 8 - Corrige inicialização do currentMonth para sempre usar mês atual
+      // Excluir currentMonth da persistência - sempre usar valor padrão (mês atual)
+      partialize: (state: CashFlowStore) => ({
+        months: state.months,
+        recurringTransactions: state.recurringTransactions,
+        // currentMonth não será persistido
+      }),
       migrate: (persistedState: any) => {
         // Migração da versão anterior
         if (persistedState?.months) {
@@ -967,7 +973,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
                                    Math.abs(monthData.totals?.saldoFinal || 0) > LIMITE_ABSURDO;
 
             if (temValorAbsurdo) {
-              console.log(`[Migration v7] Mês ${monthKey} com valores absurdos será excluído`);
+              console.log(`[Migration v8] Mês ${monthKey} com valores absurdos será excluído`);
               // Não incluir este mês na migração
             } else {
               // Adicionar transactions vazias em todas as entries que não possuem
@@ -983,12 +989,14 @@ export const useCashFlowStore = create<CashFlowStore>()(
             }
           });
 
-          console.log(`[Migration v7] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados com suporte a transações recorrentes.`);
+          console.log(`[Migration v8] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados.`);
+          console.log(`[Migration v8] ⚠️ currentMonth NÃO será persistido - sempre usará mês atual ao inicializar`);
 
           return {
             months: monthsCorrigidos,
             recurringTransactions: persistedState.recurringTransactions || {},
-            // currentMonth será inicializado com o valor padrão (mês atual)
+            // currentMonth será SEMPRE inicializado com o valor padrão (mês atual)
+            // NÃO recuperar do persistedState para evitar mostrar mês antigo
           };
         }
         return persistedState;

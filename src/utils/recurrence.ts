@@ -24,21 +24,33 @@ export function getNextOccurrence(
 
     case 'monthly':
       next.setMonth(next.getMonth() + 1);
-      if (pattern.dayOfMonth) {
+      if (pattern.useLastDayOfMonth) {
+        // Obter o último dia do mês
+        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(lastDay);
+      } else if (pattern.dayOfMonth) {
         next.setDate(pattern.dayOfMonth);
       }
       break;
 
     case 'quarterly':
       next.setMonth(next.getMonth() + 3);
-      if (pattern.dayOfMonth) {
+      if (pattern.useLastDayOfMonth) {
+        // Obter o último dia do mês
+        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(lastDay);
+      } else if (pattern.dayOfMonth) {
         next.setDate(pattern.dayOfMonth);
       }
       break;
 
     case 'yearly':
       next.setFullYear(next.getFullYear() + 1);
-      if (pattern.dayOfMonth) {
+      if (pattern.useLastDayOfMonth) {
+        // Obter o último dia do mês
+        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(lastDay);
+      } else if (pattern.dayOfMonth) {
         next.setDate(pattern.dayOfMonth);
       }
       break;
@@ -76,6 +88,12 @@ export function generateRecurringTransactionsForMonth(
 
   // Data inicial da recorrência
   let currentDate = new Date(pattern.startDate);
+
+  // Se useLastDayOfMonth está ativado, ajustar para o último dia do mês da data inicial
+  if (pattern.useLastDayOfMonth && ['monthly', 'quarterly', 'yearly'].includes(pattern.frequency)) {
+    const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    currentDate.setDate(lastDay);
+  }
 
   // Se a data inicial é depois do mês alvo, não há transações para gerar
   if (currentDate > monthEnd) {

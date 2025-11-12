@@ -24,6 +24,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
   const [recurrenceStartDate, setRecurrenceStartDate] = useState('');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState(initialDay?.toString() || '1');
+  const [useLastDayOfMonth, setUseLastDayOfMonth] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,8 +48,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         return;
       }
 
-      // Validar dayOfMonth para frequências que precisam
-      if (['monthly', 'quarterly', 'yearly'].includes(recurrenceFrequency)) {
+      // Validar dayOfMonth para frequências que precisam (apenas se não for último dia do mês)
+      if (['monthly', 'quarterly', 'yearly'].includes(recurrenceFrequency) && !useLastDayOfMonth) {
         const day = parseInt(dayOfMonth);
         if (isNaN(day) || day < 1 || day > 31) {
           alert('Por favor, informe um dia do mês válido (1-31)');
@@ -63,8 +64,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
           frequency: recurrenceFrequency,
           startDate: recurrenceStartDate,
           endDate: recurrenceEndDate || undefined,
-          dayOfMonth: ['monthly', 'quarterly', 'yearly'].includes(recurrenceFrequency)
+          dayOfMonth: ['monthly', 'quarterly', 'yearly'].includes(recurrenceFrequency) && !useLastDayOfMonth
             ? parseInt(dayOfMonth)
+            : undefined,
+          useLastDayOfMonth: ['monthly', 'quarterly', 'yearly'].includes(recurrenceFrequency) && useLastDayOfMonth
+            ? true
             : undefined,
         }
       : undefined;
@@ -79,6 +83,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
     setRecurrenceStartDate('');
     setRecurrenceEndDate('');
     setDayOfMonth(initialDay?.toString() || '1');
+    setUseLastDayOfMonth(false);
   };
 
   return createPortal(
@@ -213,18 +218,33 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
               {/* Dia do Mês (apenas para mensal, trimestral e anual) */}
               {['monthly', 'quarterly', 'yearly'].includes(recurrenceFrequency) && (
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dia do mês (1-31)
+                  <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useLastDayOfMonth}
+                      onChange={(e) => setUseLastDayOfMonth(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Último dia do mês
+                    </span>
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={dayOfMonth}
-                    onChange={(e) => setDayOfMonth(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: 5"
-                  />
+                  {!useLastDayOfMonth && (
+                    <>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Dia do mês (1-31)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={dayOfMonth}
+                        onChange={(e) => setDayOfMonth(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: 5"
+                      />
+                    </>
+                  )}
                 </div>
               )}
 

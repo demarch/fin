@@ -7,6 +7,7 @@ export interface RecurrencePattern {
   startDate: string; // ISO string
   endDate?: string; // ISO string, opcional (se não informado, recorre indefinidamente)
   dayOfMonth?: number; // Para recorrências mensais, trimestrais e anuais (1-31)
+  useLastDayOfMonth?: boolean; // Se true, usa o último dia do mês (28, 29, 30 ou 31)
 }
 
 export interface Transaction {

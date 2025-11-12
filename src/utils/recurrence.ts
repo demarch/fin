@@ -2,6 +2,7 @@ import type { RecurrencePattern, Transaction } from '../types/cashflow';
 
 /**
  * Calcula a próxima data de ocorrência baseada no padrão de recorrência
+ * IMPORTANTE: Trabalha em UTC para evitar problemas de timezone
  */
 export function getNextOccurrence(
   currentDate: Date,
@@ -11,62 +12,62 @@ export function getNextOccurrence(
 
   switch (pattern.frequency) {
     case 'daily':
-      next.setDate(next.getDate() + 1);
+      next.setUTCDate(next.getUTCDate() + 1);
       break;
 
     case 'weekly':
-      next.setDate(next.getDate() + 7);
+      next.setUTCDate(next.getUTCDate() + 7);
       break;
 
     case 'biweekly':
-      next.setDate(next.getDate() + 14);
+      next.setUTCDate(next.getUTCDate() + 14);
       break;
 
     case 'monthly':
       // SEMPRE setar para dia 1 antes de avançar o mês
       // Isso evita problemas de overflow (ex: 31/jan + 1 mês = 3/mar)
-      next.setDate(1);
-      next.setMonth(next.getMonth() + 1);
+      next.setUTCDate(1);
+      next.setUTCMonth(next.getUTCMonth() + 1);
 
       if (pattern.useLastDayOfMonth) {
-        // Obter o último dia do mês
-        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-        next.setDate(lastDay);
+        // Obter o último dia do mês usando UTC
+        const lastDay = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+        next.setUTCDate(lastDay);
       } else if (pattern.dayOfMonth) {
         // Agora sim setar para o dia desejado
-        next.setDate(pattern.dayOfMonth);
+        next.setUTCDate(pattern.dayOfMonth);
       }
       break;
 
     case 'quarterly':
       // SEMPRE setar para dia 1 antes de avançar os meses
       // Isso evita problemas de overflow
-      next.setDate(1);
-      next.setMonth(next.getMonth() + 3);
+      next.setUTCDate(1);
+      next.setUTCMonth(next.getUTCMonth() + 3);
 
       if (pattern.useLastDayOfMonth) {
-        // Obter o último dia do mês
-        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-        next.setDate(lastDay);
+        // Obter o último dia do mês usando UTC
+        const lastDay = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+        next.setUTCDate(lastDay);
       } else if (pattern.dayOfMonth) {
         // Agora sim setar para o dia desejado
-        next.setDate(pattern.dayOfMonth);
+        next.setUTCDate(pattern.dayOfMonth);
       }
       break;
 
     case 'yearly':
       // SEMPRE setar para dia 1 antes de avançar o ano
       // Isso evita problemas de overflow (ex: 29/fev em ano não bissexto)
-      next.setDate(1);
-      next.setFullYear(next.getFullYear() + 1);
+      next.setUTCDate(1);
+      next.setUTCFullYear(next.getUTCFullYear() + 1);
 
       if (pattern.useLastDayOfMonth) {
-        // Obter o último dia do mês
-        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-        next.setDate(lastDay);
+        // Obter o último dia do mês usando UTC
+        const lastDay = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+        next.setUTCDate(lastDay);
       } else if (pattern.dayOfMonth) {
         // Agora sim setar para o dia desejado
-        next.setDate(pattern.dayOfMonth);
+        next.setUTCDate(pattern.dayOfMonth);
       }
       break;
   }
@@ -110,8 +111,9 @@ export function generateRecurringTransactionsForMonth(
   });
 
   const [year, month] = targetMonth.split('-').map(Number);
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59);
+  // Usar UTC para evitar problemas de timezone
+  const monthStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+  const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59));
 
   console.log(`[Recurrence] Período do mês: ${monthStart.toISOString().split('T')[0]} até ${monthEnd.toISOString().split('T')[0]}`);
 
@@ -123,8 +125,8 @@ export function generateRecurringTransactionsForMonth(
 
   // Se useLastDayOfMonth está ativado, ajustar para o último dia do mês da data inicial
   if (pattern.useLastDayOfMonth && ['monthly', 'quarterly', 'yearly'].includes(pattern.frequency)) {
-    const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-    currentDate.setDate(lastDay);
+    const lastDay = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 0)).getUTCDate();
+    currentDate.setUTCDate(lastDay);
     console.log(`[Recurrence] Ajustado para último dia: ${currentDate.toISOString()}`);
   }
 
@@ -163,7 +165,7 @@ export function generateRecurringTransactionsForMonth(
     }
 
     // Criar transação para esta ocorrência
-    console.log(`[Recurrence] ✓ Criando transação para ${currentDate.toISOString().split('T')[0]} (dia ${currentDate.getDate()})`);
+    console.log(`[Recurrence] ✓ Criando transação para ${currentDate.toISOString().split('T')[0]} (dia ${currentDate.getUTCDate()})`);
     const transaction: Transaction = {
       id: `${parentRecurringId}-${currentDate.getTime()}`,
       type: baseTransaction.type,
@@ -197,8 +199,8 @@ export function shouldGenerateForMonth(
   targetMonth: string // formato: "2024-11"
 ): boolean {
   const [year, month] = targetMonth.split('-').map(Number);
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 0, 23, 59, 59);
+  const monthStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+  const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59));
 
   const startDate = new Date(pattern.startDate);
 
@@ -225,7 +227,7 @@ export function getDayOfMonthForRecurrence(pattern: RecurrencePattern): number {
   if (!pattern.dayOfMonth) {
     // Para frequências diárias, semanais e quinzenais, usar o dia da data inicial
     const startDate = new Date(pattern.startDate);
-    return startDate.getDate();
+    return startDate.getUTCDate();
   }
 
   return pattern.dayOfMonth;

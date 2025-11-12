@@ -1,0 +1,49 @@
+{
+  "common": {
+    "appName": "FinControl",
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Añadir",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "search": "Buscar"
+  },
+  "navigation": {
+    "dashboard": "Panel",
+    "cashFlow": "Flujo de Caja",
+    "loans": "Préstamos",
+    "creditCards": "Tarjetas",
+    "investments": "Inversiones",
+    "settings": "Configuración"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "Resumen de tus finanzas personales",
+    "currentBalance": "Saldo Actual",
+    "monthIncome": "Ingresos del Mes",
+    "monthExpenses": "Gastos del Mes",
+    "monthPerformance": "Rendimiento del Mes",
+    "totalLoans": "Total en Préstamos",
+    "availableInvestment": "Disponible para Inversión",
+    "recentHistory": "Historial Reciente",
+    "quickActions": "Acciones Rápidas",
+    "noHistory": "No hay historial disponible"
+  },
+  "theme": {
+    "light": "Modo Claro",
+    "dark": "Modo Oscuro",
+    "system": "Sistema",
+    "toggle": "Cambiar tema"
+  },
+  "language": {
+    "select": "Seleccionar Idioma",
+    "pt-BR": "Portugués (Brasil)",
+    "en-US": "Inglés (EE.UU.)",
+    "es-ES": "Español"
+  }
+}

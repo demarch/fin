@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Wallet, TrendingUp, CreditCard, Settings, Banknote, LineChart } from 'lucide-react';
 import { ThemeToggleIcon } from './ThemeToggle';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 export default function Header() {
   const location = useLocation();
@@ -94,6 +95,9 @@ export default function Header() {
               <Settings className="h-4 w-4 mr-2" />
               Configurações
             </Link>
+
+            {/* Language Switcher */}
+            <LanguageSwitcher />
 
             {/* Theme Toggle */}
             <ThemeToggleIcon />

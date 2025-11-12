@@ -1,0 +1,49 @@
+{
+  "common": {
+    "appName": "FinControl",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "cashFlow": "Cash Flow",
+    "loans": "Loans",
+    "creditCards": "Credit Cards",
+    "investments": "Investments",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overview of your personal finances",
+    "currentBalance": "Current Balance",
+    "monthIncome": "Month Income",
+    "monthExpenses": "Month Expenses",
+    "monthPerformance": "Month Performance",
+    "totalLoans": "Total Loans",
+    "availableInvestment": "Available for Investment",
+    "recentHistory": "Recent History",
+    "quickActions": "Quick Actions",
+    "noHistory": "No history available"
+  },
+  "theme": {
+    "light": "Light Mode",
+    "dark": "Dark Mode",
+    "system": "System",
+    "toggle": "Toggle theme"
+  },
+  "language": {
+    "select": "Select Language",
+    "pt-BR": "Portuguese (Brazil)",
+    "en-US": "English (US)",
+    "es-ES": "Spanish"
+  }
+}

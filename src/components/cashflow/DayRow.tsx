@@ -8,7 +8,30 @@ interface DayRowProps {
   entry: DailyEntry;
   monthStr: string;
   onUpdate: (field: keyof DailyEntry, value: number) => void;
-  onAddTransaction: (type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => void;
+  onAddTransaction: (
+    type: TransactionType,
+    description: string,
+    amount: number,
+    category?: string,
+    recurrencePattern?: RecurrencePattern,
+    creditCardData?: {
+      isCartaoCredito: boolean;
+      cartaoCreditoId?: string;
+      parcelado?: boolean;
+      numeroParcelas?: number;
+    },
+    investmentData?: {
+      isInvestimento: boolean;
+      tipo?: string;
+      banco?: string;
+      nomeAcao?: string;
+      quantidade?: number;
+      valorUnitario?: number;
+      observacoes?: string;
+      vencimento?: string;
+      taxa?: number;
+    }
+  ) => void;
   onDeleteTransaction: (transactionId: string) => void;
   onDeleteSeries?: (recurringId: string) => void;
   isToday?: boolean;
@@ -33,9 +56,26 @@ export default function DayRow({
     description: string,
     amount: number,
     category?: string,
-    recurrencePattern?: RecurrencePattern
+    recurrencePattern?: RecurrencePattern,
+    creditCardData?: {
+      isCartaoCredito: boolean;
+      cartaoCreditoId?: string;
+      parcelado?: boolean;
+      numeroParcelas?: number;
+    },
+    investmentData?: {
+      isInvestimento: boolean;
+      tipo?: string;
+      banco?: string;
+      nomeAcao?: string;
+      quantidade?: number;
+      valorUnitario?: number;
+      observacoes?: string;
+      vencimento?: string;
+      taxa?: number;
+    }
   ) => {
-    onAddTransaction(type, description, amount, category, recurrencePattern);
+    onAddTransaction(type, description, amount, category, recurrencePattern, creditCardData, investmentData);
     setShowTransactionForm(false);
   };
 

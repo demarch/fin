@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TransactionType, RecurrenceFrequency, RecurrencePattern } from '../../types/cashflow';
+import { useCreditCardStore } from '../../store/creditCardStore';
+import type { InvestmentType } from '../../types/investment';
+import { INVESTMENT_TYPE_LABELS } from '../../types/investment';
 
 /**
  * Converte uma data no formato "YYYY-MM-DD" (do input type="date") para ISO string
@@ -20,13 +23,33 @@ interface TransactionFormProps {
     description: string,
     amount: number,
     category?: string,
-    recurrencePattern?: RecurrencePattern
+    recurrencePattern?: RecurrencePattern,
+    creditCardData?: {
+      isCartaoCredito: boolean;
+      cartaoCreditoId?: string;
+      parcelado?: boolean;
+      numeroParcelas?: number;
+    },
+    investmentData?: {
+      isInvestimento: boolean;
+      tipo?: InvestmentType;
+      banco?: string;
+      nomeAcao?: string;
+      quantidade?: number;
+      valorUnitario?: number;
+      taxa?: number;
+      vencimento?: string;
+      observacoes?: string;
+    }
   ) => void;
   onCancel: () => void;
   initialDay?: number; // Dia do mês para sugerir como data inicial
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCancel, initialDay }) => {
+  const { getCartoesAtivos } = useCreditCardStore();
+  const cartoesAtivos = getCartoesAtivos();
+
   const [type, setType] = useState<TransactionType>('receita');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -37,6 +60,28 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState(initialDay?.toString() || '1');
   const [useLastDayOfMonth, setUseLastDayOfMonth] = useState(false);
+
+  // Campos de Cartão de Crédito
+  const [isCartaoCredito, setIsCartaoCredito] = useState(false);
+  const [cartaoCreditoId, setCartaoCreditoId] = useState('');
+  const [isParcelado, setIsParcelado] = useState(false);
+  const [numeroParcelas, setNumeroParcelas] = useState('1');
+
+  // Campos de Investimento
+  const [isInvestimento, setIsInvestimento] = useState(false);
+  const [tipoInvestimento, setTipoInvestimento] = useState<InvestmentType>('acoes');
+  const [bancoInvestimento, setBancoInvestimento] = useState('');
+  const [nomeAcao, setNomeAcao] = useState('');
+  const [quantidade, setQuantidade] = useState('');
+  const [valorUnitario, setValorUnitario] = useState('');
+  const [taxaInvestimento, setTaxaInvestimento] = useState('');
+  const [vencimentoInvestimento, setVencimentoInvestimento] = useState('');
+  const [observacoesInvestimento, setObservacoesInvestimento] = useState('');
+
+  // Tipos que requerem nome do ativo
+  const requerNomeAtivo = ['acoes', 'fiis', 'criptomoedas'];
+  // Tipos que geralmente têm vencimento
+  const permiteVencimento = ['renda-fixa', 'tesouro-direto', 'cdb', 'lci-lca', 'debentures', 'coe'];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +96,52 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
     if (isNaN(amountNum) || amountNum <= 0) {
       alert('Por favor, informe um valor válido');
       return;
+    }
+
+    // Validações de cartão de crédito
+    if (isCartaoCredito) {
+      if (!cartaoCreditoId) {
+        alert('Por favor, selecione um cartão de crédito');
+        return;
+      }
+
+      if (isParcelado) {
+        const parcelas = parseInt(numeroParcelas);
+        if (isNaN(parcelas) || parcelas < 2 || parcelas > 48) {
+          alert('Por favor, informe um número de parcelas válido (2-48)');
+          return;
+        }
+      }
+
+      // Não permitir transação de cartão recorrente ao mesmo tempo
+      if (isRecurring) {
+        alert('Transações de cartão não podem ser recorrentes. Use o parcelamento para dividir o valor.');
+        return;
+      }
+    }
+
+    // Validações de investimento
+    if (isInvestimento) {
+      if (!bancoInvestimento.trim()) {
+        alert('Por favor, informe o banco/corretora do investimento');
+        return;
+      }
+
+      if (requerNomeAtivo.includes(tipoInvestimento) && !nomeAcao.trim()) {
+        alert(`Por favor, informe o código ${tipoInvestimento === 'acoes' ? 'da ação' : tipoInvestimento === 'fiis' ? 'do FII' : 'da criptomoeda'}`);
+        return;
+      }
+
+      // Não permitir investimento com cartão ou recorrente
+      if (isCartaoCredito) {
+        alert('Investimentos não podem ser feitos com cartão de crédito');
+        return;
+      }
+
+      if (isRecurring) {
+        alert('Investimentos não podem ser recorrentes. Cadastre cada aporte separadamente.');
+        return;
+      }
     }
 
     // Validações de recorrência
@@ -85,7 +176,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         }
       : undefined;
 
-    onSubmit(type, description.trim(), amountNum, category.trim() || undefined, recurrencePattern);
+    // Construir dados de cartão de crédito se aplicável
+    const creditCardData = isCartaoCredito
+      ? {
+          isCartaoCredito: true,
+          cartaoCreditoId,
+          parcelado: isParcelado,
+          numeroParcelas: isParcelado ? parseInt(numeroParcelas) : undefined,
+        }
+      : undefined;
+
+    // Construir dados de investimento se aplicável
+    const investmentData = isInvestimento
+      ? {
+          isInvestimento: true,
+          tipo: tipoInvestimento,
+          banco: bancoInvestimento.trim(),
+          nomeAcao: requerNomeAtivo.includes(tipoInvestimento) ? nomeAcao.trim().toUpperCase() : undefined,
+          quantidade: quantidade ? parseFloat(quantidade) : undefined,
+          valorUnitario: valorUnitario ? parseFloat(valorUnitario) : undefined,
+          taxa: taxaInvestimento ? parseFloat(taxaInvestimento) : undefined,
+          vencimento: vencimentoInvestimento ? vencimentoInvestimento : undefined,
+          observacoes: observacoesInvestimento.trim() || undefined,
+        }
+      : undefined;
+
+    onSubmit(type, description.trim(), amountNum, category.trim() || undefined, recurrencePattern, creditCardData, investmentData);
 
     // Resetar formulário
     setDescription('');
@@ -96,14 +212,30 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
     setRecurrenceEndDate('');
     setDayOfMonth(initialDay?.toString() || '1');
     setUseLastDayOfMonth(false);
+    setIsCartaoCredito(false);
+    setCartaoCreditoId('');
+    setIsParcelado(false);
+    setNumeroParcelas('1');
+    setIsInvestimento(false);
+    setTipoInvestimento('acoes');
+    setBancoInvestimento('');
+    setNomeAcao('');
+    setQuantidade('');
+    setValorUnitario('');
+    setTaxaInvestimento('');
+    setVencimentoInvestimento('');
+    setObservacoesInvestimento('');
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-4">Nova Transação</h3>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold">Nova Transação</h3>
+        </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="px-6 py-4 overflow-y-auto flex-1">
           {/* Tipo de Transação */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -190,20 +322,286 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
             />
           </div>
 
+          {/* Cartão de Crédito (apenas para despesas) */}
+          {type === 'despesa' && cartoesAtivos.length > 0 && (
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isCartaoCredito}
+                  onChange={(e) => {
+                    setIsCartaoCredito(e.target.checked);
+                    if (!e.target.checked) {
+                      setCartaoCreditoId('');
+                      setIsParcelado(false);
+                      setNumeroParcelas('1');
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Pagar com cartão de crédito
+                </span>
+              </label>
+            </div>
+          )}
+
+          {/* Campos de Cartão de Crédito */}
+          {isCartaoCredito && (
+            <div className="mb-4 p-4 bg-purple-50 rounded border border-purple-200">
+              {/* Selecionar Cartão */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Selecione o cartão
+                </label>
+                <select
+                  value={cartaoCreditoId}
+                  onChange={(e) => setCartaoCreditoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  required={isCartaoCredito}
+                >
+                  <option value="">Selecione um cartão...</option>
+                  {cartoesAtivos.map((cartao) => (
+                    <option key={cartao.id} value={cartao.id}>
+                      {cartao.nome} - {cartao.banco}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Parcelamento */}
+              <div className="mb-3">
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <input
+                    type="checkbox"
+                    checked={isParcelado}
+                    onChange={(e) => {
+                      setIsParcelado(e.target.checked);
+                      if (!e.target.checked) {
+                        setNumeroParcelas('1');
+                      }
+                    }}
+                    className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Parcelar compra
+                  </span>
+                </label>
+
+                {isParcelado && (
+                  <>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número de parcelas (2-48)
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="48"
+                      value={numeroParcelas}
+                      onChange={(e) => setNumeroParcelas(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Ex: 12"
+                      required={isParcelado}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Valor da parcela: R${' '}
+                      {amount && !isNaN(parseFloat(amount.replace(',', '.')))
+                        ? (parseFloat(amount.replace(',', '.')) / parseInt(numeroParcelas || '1')).toFixed(2)
+                        : '0,00'}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Investimento (apenas para despesas) */}
+          {type === 'despesa' && !isCartaoCredito && (
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isInvestimento}
+                  onChange={(e) => {
+                    setIsInvestimento(e.target.checked);
+                    if (!e.target.checked) {
+                      setTipoInvestimento('acoes');
+                      setBancoInvestimento('');
+                      setNomeAcao('');
+                      setQuantidade('');
+                      setValorUnitario('');
+                      setTaxaInvestimento('');
+                      setVencimentoInvestimento('');
+                      setObservacoesInvestimento('');
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Marcar como investimento
+                </span>
+              </label>
+            </div>
+          )}
+
+          {/* Campos de Investimento */}
+          {isInvestimento && (
+            <div className="mb-4 p-4 bg-green-50 rounded border border-green-200">
+              {/* Tipo de Investimento */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tipo de Investimento *
+                </label>
+                <select
+                  value={tipoInvestimento}
+                  onChange={(e) => setTipoInvestimento(e.target.value as InvestmentType)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required={isInvestimento}
+                >
+                  {Object.entries(INVESTMENT_TYPE_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Banco/Corretora */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Banco/Corretora *
+                </label>
+                <input
+                  type="text"
+                  value={bancoInvestimento}
+                  onChange={(e) => setBancoInvestimento(e.target.value)}
+                  placeholder="Ex: XP, Nu Invest, Binance"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required={isInvestimento}
+                />
+              </div>
+
+              {/* Código do Ativo (para ações, FIIs, cripto) */}
+              {requerNomeAtivo.includes(tipoInvestimento) && (
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {tipoInvestimento === 'acoes' && 'Código da Ação *'}
+                    {tipoInvestimento === 'fiis' && 'Código do FII *'}
+                    {tipoInvestimento === 'criptomoedas' && 'Criptomoeda *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={nomeAcao}
+                    onChange={(e) => setNomeAcao(e.target.value.toUpperCase())}
+                    placeholder={
+                      tipoInvestimento === 'acoes'
+                        ? 'Ex: PETR4, VALE3'
+                        : tipoInvestimento === 'fiis'
+                        ? 'Ex: HGLG11, MXRF11'
+                        : 'Ex: BTC, ETH'
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    required={isInvestimento}
+                  />
+                </div>
+              )}
+
+              {/* Quantidade e Valor Unitário */}
+              {requerNomeAtivo.includes(tipoInvestimento) && (
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantidade
+                    </label>
+                    <input
+                      type="number"
+                      value={quantidade}
+                      onChange={(e) => setQuantidade(e.target.value)}
+                      placeholder="0"
+                      step="0.00000001"
+                      min="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Valor Unitário
+                    </label>
+                    <input
+                      type="number"
+                      value={valorUnitario}
+                      onChange={(e) => setValorUnitario(e.target.value)}
+                      placeholder="0,00"
+                      step="0.01"
+                      min="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Taxa e Vencimento (para renda fixa) */}
+              {permiteVencimento.includes(tipoInvestimento) && (
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Taxa (% a.a.)
+                    </label>
+                    <input
+                      type="number"
+                      value={taxaInvestimento}
+                      onChange={(e) => setTaxaInvestimento(e.target.value)}
+                      placeholder="0,00"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vencimento
+                    </label>
+                    <input
+                      type="date"
+                      value={vencimentoInvestimento}
+                      onChange={(e) => setVencimentoInvestimento(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Observações */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Observações
+                </label>
+                <textarea
+                  value={observacoesInvestimento}
+                  onChange={(e) => setObservacoesInvestimento(e.target.value)}
+                  rows={2}
+                  placeholder="Informações adicionais..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Recorrência */}
-          <div className="mb-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                Transação recorrente
-              </span>
-            </label>
-          </div>
+          {!isInvestimento && (
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Transação recorrente
+                </span>
+              </label>
+            </div>
+          )}
 
           {/* Campos de Recorrência (aparecem apenas se isRecurring for true) */}
           {isRecurring && (
@@ -293,8 +691,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
             </div>
           )}
 
+          </div>
+
           {/* Botões */}
-          <div className="flex gap-3">
+          <div className="px-6 py-4 border-t border-gray-200 flex gap-3 bg-white rounded-b-lg">
             <button
               type="button"
               onClick={onCancel}

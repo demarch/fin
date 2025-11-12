@@ -6,6 +6,9 @@ import MonthGrid from '../components/cashflow/MonthGrid';
 import Card from '../components/common/Card';
 import { EmergencyReset } from '../components/cashflow/EmergencyReset';
 import { RecurringTransactionsManager } from '../components/cashflow/RecurringTransactionsManager';
+import { processarTransacaoCartao } from '../utils/creditCardIntegration';
+import { processarInvestimento } from '../utils/investmentIntegration';
+import type { InvestmentType } from '../types/investment';
 
 export default function CashFlow() {
   const {
@@ -152,9 +155,51 @@ export default function CashFlow() {
             onUpdateEntry={(day, field, value) =>
               updateDailyEntry(currentMonth, day, field, value)
             }
-            onAddTransaction={(day, type, description, amount, category, recurrencePattern) =>
-              addTransaction(currentMonth, day, type, description, amount, category, recurrencePattern)
-            }
+            onAddTransaction={(day, type, description, amount, category, recurrencePattern, creditCardData, investmentData) => {
+              const [ano, mes] = currentMonth.split('-').map(Number);
+              const data = new Date(ano, mes - 1, day).toISOString();
+
+              if (creditCardData?.isCartaoCredito && creditCardData.cartaoCreditoId) {
+                // Processar transação de cartão de crédito
+                try {
+                  processarTransacaoCartao(
+                    creditCardData.cartaoCreditoId,
+                    description,
+                    amount,
+                    data,
+                    category,
+                    creditCardData.parcelado,
+                    creditCardData.numeroParcelas
+                  );
+                } catch (error) {
+                  console.error('Erro ao processar transação de cartão:', error);
+                  alert('Erro ao processar transação de cartão. Tente novamente.');
+                }
+              } else if (investmentData?.isInvestimento && investmentData.tipo && investmentData.banco) {
+                // Processar investimento
+                try {
+                  processarInvestimento(
+                    investmentData.tipo as InvestmentType,
+                    description,
+                    investmentData.banco,
+                    amount,
+                    data,
+                    investmentData.nomeAcao,
+                    investmentData.quantidade,
+                    investmentData.valorUnitario,
+                    investmentData.observacoes,
+                    investmentData.vencimento,
+                    investmentData.taxa
+                  );
+                } catch (error) {
+                  console.error('Erro ao processar investimento:', error);
+                  alert('Erro ao processar investimento. Tente novamente.');
+                }
+              } else {
+                // Processar transação normal
+                addTransaction(currentMonth, day, type, description, amount, category, recurrencePattern);
+              }
+            }}
             onDeleteTransaction={(day, transactionId) =>
               deleteTransaction(currentMonth, day, transactionId)
             }

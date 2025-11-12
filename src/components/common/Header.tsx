@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Wallet, TrendingUp, CreditCard, Settings } from 'lucide-react';
+import { Wallet, TrendingUp, CreditCard, Settings, Banknote, LineChart } from 'lucide-react';
 
 export default function Header() {
   const location = useLocation();
@@ -54,8 +54,32 @@ export default function Header() {
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <CreditCard className="h-4 w-4 mr-2" />
+              <Banknote className="h-4 w-4 mr-2" />
               Empréstimos
+            </Link>
+
+            <Link
+              to="/cartoes"
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/cartoes')
+                  ? 'bg-primary text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              Cartões
+            </Link>
+
+            <Link
+              to="/investimentos"
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/investimentos')
+                  ? 'bg-primary text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <LineChart className="h-4 w-4 mr-2" />
+              Investimentos
             </Link>
 
             <Link

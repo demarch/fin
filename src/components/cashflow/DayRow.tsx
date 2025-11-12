@@ -10,6 +10,7 @@ interface DayRowProps {
   onUpdate: (field: keyof DailyEntry, value: number) => void;
   onAddTransaction: (type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => void;
   onDeleteTransaction: (transactionId: string) => void;
+  onDeleteSeries?: (recurringId: string) => void;
   isToday?: boolean;
 }
 
@@ -18,6 +19,7 @@ export default function DayRow({
   onUpdate,
   onAddTransaction,
   onDeleteTransaction,
+  onDeleteSeries,
   isToday = false
 }: DayRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -141,6 +143,7 @@ export default function DayRow({
               <TransactionsList
                 transactions={entry.transactions || []}
                 onDelete={onDeleteTransaction}
+                onDeleteSeries={onDeleteSeries}
               />
             </div>
           </td>

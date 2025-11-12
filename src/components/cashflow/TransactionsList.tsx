@@ -6,9 +6,10 @@ import { formatRecurrenceFrequency } from '../../utils/recurrence';
 interface TransactionsListProps {
   transactions: Transaction[];
   onDelete: (transactionId: string) => void;
+  onDeleteSeries?: (recurringId: string) => void; // Para deletar toda a série de uma recorrência
 }
 
-export const TransactionsList: React.FC<TransactionsListProps> = ({ transactions, onDelete }) => {
+export const TransactionsList: React.FC<TransactionsListProps> = ({ transactions, onDelete, onDeleteSeries }) => {
   if (transactions.length === 0) {
     return (
       <div className="text-sm text-gray-500 italic py-2">
@@ -45,6 +46,42 @@ export const TransactionsList: React.FC<TransactionsListProps> = ({ transactions
 
   const isRecurringTransaction = (transaction: Transaction) => {
     return transaction.isRecurring || !!transaction.parentRecurringId;
+  };
+
+  const handleDelete = (transaction: Transaction) => {
+    // Se for uma transação recorrente (template ou ocorrência gerada)
+    if (isRecurringTransaction(transaction) && onDeleteSeries) {
+      const recurringId = transaction.parentRecurringId || transaction.id;
+
+      // Mostrar opções
+      const message = transaction.parentRecurringId
+        ? `Esta é uma ocorrência de uma transação recorrente.\n\nO que deseja fazer?\n\n[OK] - Excluir apenas esta ocorrência\n[Cancelar] - Ver opções para excluir toda a série`
+        : `Esta é uma transação recorrente.\n\nVocê deseja excluir:\n\n[OK] - Excluir toda a série (todas as ocorrências)\n[Cancelar] - Excluir apenas esta transação`;
+
+      if (window.confirm(message)) {
+        // Se for uma ocorrência gerada, excluir apenas ela
+        if (transaction.parentRecurringId) {
+          onDelete(transaction.id);
+        } else {
+          // Se for o template, perguntar novamente
+          if (window.confirm('Tem certeza? Isso excluirá TODAS as ocorrências desta recorrência!')) {
+            onDeleteSeries(recurringId);
+          }
+        }
+      } else {
+        // Se cancelou e é uma ocorrência gerada, perguntar se quer excluir toda a série
+        if (transaction.parentRecurringId) {
+          if (window.confirm('Deseja excluir TODA a série desta recorrência?\n\nIsso excluirá todas as ocorrências passadas e futuras.')) {
+            onDeleteSeries(recurringId);
+          }
+        }
+      }
+    } else {
+      // Transação normal (não recorrente)
+      if (window.confirm('Deseja realmente excluir esta transação?')) {
+        onDelete(transaction.id);
+      }
+    }
   };
 
   return (
@@ -111,13 +148,13 @@ export const TransactionsList: React.FC<TransactionsListProps> = ({ transactions
               </div>
             </div>
             <button
-              onClick={() => {
-                if (window.confirm('Deseja realmente excluir esta transação?')) {
-                  onDelete(transaction.id);
-                }
-              }}
+              onClick={() => handleDelete(transaction)}
               className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="Excluir transação"
+              title={
+                isRecurringTransaction(transaction)
+                  ? 'Excluir transação (opções disponíveis)'
+                  : 'Excluir transação'
+              }
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

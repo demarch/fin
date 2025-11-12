@@ -27,6 +27,18 @@ export default function CashFlow() {
 
   const monthData = months[currentMonth];
 
+  // 🔒 GARANTIR que sempre inicia no mês atual ao montar o componente
+  useEffect(() => {
+    const mesAtual = formatMonthString(new Date());
+    console.log('[CashFlow] 🗓️ Componente montado - Verificando mês atual:', mesAtual);
+    console.log('[CashFlow] 📅 Mês no store:', currentMonth);
+
+    if (currentMonth !== mesAtual) {
+      console.log('[CashFlow] ⚠️ Mês diferente do atual! Atualizando para:', mesAtual);
+      setCurrentMonth(mesAtual);
+    }
+  }, []); // Executar apenas uma vez ao montar
+
   useEffect(() => {
     initializeMonth(currentMonth);
   }, [currentMonth, initializeMonth]);

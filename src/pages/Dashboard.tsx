@@ -2,14 +2,26 @@ import { useEffect, useMemo } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, PiggyBank, BarChart3 } from 'lucide-react';
 import { useCashFlowStore } from '../store/cashFlowStore';
 import { useLoansStore } from '../store/loansStore';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatMonthString } from '../utils/formatters';
 import { calculateMonthTotalsUpToDay } from '../utils/calculations';
 import SummaryCard from '../components/dashboard/SummaryCard';
 import Card from '../components/common/Card';
 
 export default function Dashboard() {
-  const { months, currentMonth, initializeMonth } = useCashFlowStore();
+  const { months, currentMonth, initializeMonth, setCurrentMonth } = useCashFlowStore();
   const { getTotalRemainingAmount } = useLoansStore();
+
+  // 🔒 GARANTIR que sempre mostra dados do mês atual
+  useEffect(() => {
+    const mesAtual = formatMonthString(new Date());
+    console.log('[Dashboard] 🗓️ Componente montado - Verificando mês atual:', mesAtual);
+    console.log('[Dashboard] 📅 Mês no store:', currentMonth);
+
+    if (currentMonth !== mesAtual) {
+      console.log('[Dashboard] ⚠️ Mês diferente do atual! Atualizando para:', mesAtual);
+      setCurrentMonth(mesAtual);
+    }
+  }, []); // Executar apenas uma vez ao montar
 
   useEffect(() => {
     initializeMonth(currentMonth);

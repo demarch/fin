@@ -58,9 +58,17 @@ interface CashFlowStore {
 
 export const useCashFlowStore = create<CashFlowStore>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      // 🔒 GARANTIR que currentMonth seja SEMPRE o mês atual
+      const getCurrentMonth = () => {
+        const mesAtual = formatMonthString(new Date());
+        console.log(`[CashFlow Store] 🗓️ Inicializando com mês atual: ${mesAtual}`);
+        return mesAtual;
+      };
+
+      return {
       months: {},
-      currentMonth: formatMonthString(new Date()),
+      currentMonth: getCurrentMonth(),
       recurringTransactions: {},
 
       initializeMonth: (monthStr: string) => {
@@ -116,10 +124,19 @@ export const useCashFlowStore = create<CashFlowStore>()(
           return; // Month already exists (e foi validado/corrigido se necessário)
         }
 
-        const date = new Date(monthStr + '-01');
+        // 🔒 USAR parseMonthString para evitar problemas de timezone
+        const date = parseMonthString(monthStr);
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const monthName = getMonthName(date.getMonth());
+
+        console.log(`[CashFlow] 📅 Inicializando mês ${monthStr}:`, {
+          monthStr,
+          year,
+          month,
+          monthName,
+          dateCreated: date.toISOString()
+        });
 
         const entries = createEmptyMonthEntries(year, month);
         const saldoInicial = get().getSaldoInicial(monthStr);
@@ -951,10 +968,27 @@ export const useCashFlowStore = create<CashFlowStore>()(
         // Esta função simplesmente chama deleteTransaction, que já remove uma ocorrência específica
         get().deleteTransaction(monthStr, day, transactionId);
       },
-    }),
+    };
+  },
     {
       name: 'cashflow-storage',
-      version: 7, // 🔧 VERSÃO 7 - Adiciona suporte a transações recorrentes
+      version: 8, // 🔧 VERSÃO 8 - Corrige inicialização do currentMonth para sempre usar mês atual
+      // Excluir currentMonth da persistência - sempre usar valor padrão (mês atual)
+      partialize: (state: CashFlowStore) => ({
+        months: state.months,
+        recurringTransactions: state.recurringTransactions,
+        // currentMonth não será persistido
+      }),
+      onRehydrateStorage: () => (state) => {
+        // 🔒 FORÇAR currentMonth para o mês atual após carregar do localStorage
+        if (state) {
+          const mesAtual = formatMonthString(new Date());
+          console.log(`[CashFlow Store] 🔄 Após hidratação - Forçando mês atual: ${mesAtual}`);
+          console.log(`[CashFlow Store] 📅 Mês que estava no estado: ${state.currentMonth}`);
+          state.currentMonth = mesAtual;
+          console.log(`[CashFlow Store] ✅ Mês atualizado para: ${state.currentMonth}`);
+        }
+      },
       migrate: (persistedState: any) => {
         // Migração da versão anterior
         if (persistedState?.months) {
@@ -967,7 +1001,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
                                    Math.abs(monthData.totals?.saldoFinal || 0) > LIMITE_ABSURDO;
 
             if (temValorAbsurdo) {
-              console.log(`[Migration v7] Mês ${monthKey} com valores absurdos será excluído`);
+              console.log(`[Migration v8] Mês ${monthKey} com valores absurdos será excluído`);
               // Não incluir este mês na migração
             } else {
               // Adicionar transactions vazias em todas as entries que não possuem
@@ -983,12 +1017,14 @@ export const useCashFlowStore = create<CashFlowStore>()(
             }
           });
 
-          console.log(`[Migration v7] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados com suporte a transações recorrentes.`);
+          console.log(`[Migration v8] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados.`);
+          console.log(`[Migration v8] ⚠️ currentMonth NÃO será persistido - sempre usará mês atual ao inicializar`);
 
           return {
             months: monthsCorrigidos,
             recurringTransactions: persistedState.recurringTransactions || {},
-            // currentMonth será inicializado com o valor padrão (mês atual)
+            // currentMonth será SEMPRE inicializado com o valor padrão (mês atual)
+            // NÃO recuperar do persistedState para evitar mostrar mês antigo
           };
         }
         return persistedState;

@@ -228,11 +228,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-4">Nova Transação</h3>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold">Nova Transação</h3>
+        </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="px-6 py-4 overflow-y-auto flex-1">
           {/* Tipo de Transação */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -688,8 +691,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
             </div>
           )}
 
+          </div>
+
           {/* Botões */}
-          <div className="flex gap-3">
+          <div className="px-6 py-4 border-t border-gray-200 flex gap-3 bg-white rounded-b-lg">
             <button
               type="button"
               onClick={onCancel}

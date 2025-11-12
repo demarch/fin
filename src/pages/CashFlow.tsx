@@ -30,11 +30,11 @@ export default function CashFlow() {
   // 🔒 GARANTIR que sempre inicia no mês atual ao montar o componente
   useEffect(() => {
     const mesAtual = formatMonthString(new Date());
-    console.log('[CashFlow] 🗓️ Componente montado - Verificando mês atual:', mesAtual);
-    console.log('[CashFlow] 📅 Mês no store:', currentMonth);
+    // console.log('[CashFlow] 🗓️ Componente montado - Verificando mês atual:', mesAtual);
+    // console.log('[CashFlow] 📅 Mês no store:', currentMonth);
 
     if (currentMonth !== mesAtual) {
-      console.log('[CashFlow] ⚠️ Mês diferente do atual! Atualizando para:', mesAtual);
+      // console.log('[CashFlow] ⚠️ Mês diferente do atual! Atualizando para:', mesAtual);
       setCurrentMonth(mesAtual);
     }
   }, []); // Executar apenas uma vez ao montar
@@ -184,7 +184,7 @@ export default function CashFlow() {
                     creditCardData.numeroParcelas
                   );
                 } catch (error) {
-                  console.error('Erro ao processar transação de cartão:', error);
+                  // console.error('Erro ao processar transação de cartão:', error);
                   alert('Erro ao processar transação de cartão. Tente novamente.');
                 }
               } else if (investmentData?.isInvestimento && investmentData.tipo && investmentData.banco) {
@@ -204,7 +204,7 @@ export default function CashFlow() {
                     investmentData.taxa
                   );
                 } catch (error) {
-                  console.error('Erro ao processar investimento:', error);
+                  // console.error('Erro ao processar investimento:', error);
                   alert('Erro ao processar investimento. Tente novamente.');
                 }
               } else {

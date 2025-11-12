@@ -59,7 +59,7 @@ export default function Settings() {
         }
       } catch (error) {
         alert('Erro ao importar dados. Verifique se o arquivo está correto.');
-        console.error(error);
+        // console.error(error);
       }
     };
 

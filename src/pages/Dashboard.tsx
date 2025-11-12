@@ -14,11 +14,11 @@ export default function Dashboard() {
   // 🔒 GARANTIR que sempre mostra dados do mês atual
   useEffect(() => {
     const mesAtual = formatMonthString(new Date());
-    console.log('[Dashboard] 🗓️ Componente montado - Verificando mês atual:', mesAtual);
-    console.log('[Dashboard] 📅 Mês no store:', currentMonth);
+    // console.log('[Dashboard] 🗓️ Componente montado - Verificando mês atual:', mesAtual);
+    // console.log('[Dashboard] 📅 Mês no store:', currentMonth);
 
     if (currentMonth !== mesAtual) {
-      console.log('[Dashboard] ⚠️ Mês diferente do atual! Atualizando para:', mesAtual);
+      // console.log('[Dashboard] ⚠️ Mês diferente do atual! Atualizando para:', mesAtual);
       setCurrentMonth(mesAtual);
     }
   }, []); // Executar apenas uma vez ao montar

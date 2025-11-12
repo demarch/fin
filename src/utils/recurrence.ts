@@ -91,48 +91,38 @@ export function generateRecurringTransactionsForMonth(
   targetMonth: string, // formato: "2024-11"
   parentRecurringId: string
 ): Transaction[] {
-  console.log(`[Recurrence] 🔄 generateRecurringTransactionsForMonth para ${targetMonth}`, {
-    description: baseTransaction.description,
-    parentId: parentRecurringId
-  });
+  // Gerando transações recorrentes para o mês
 
   if (!baseTransaction.recurrencePattern) {
-    console.log(`[Recurrence] ⚠️ Sem padrão de recorrência`);
+    // console.log(`[Recurrence] ⚠️ Sem padrão de recorrência`);
     return [];
   }
 
   const pattern = baseTransaction.recurrencePattern;
-  console.log(`[Recurrence] Pattern:`, {
-    frequency: pattern.frequency,
-    startDate: pattern.startDate,
-    endDate: pattern.endDate,
-    dayOfMonth: pattern.dayOfMonth,
-    useLastDayOfMonth: pattern.useLastDayOfMonth
-  });
 
   const [year, month] = targetMonth.split('-').map(Number);
   // Usar UTC para evitar problemas de timezone
   const monthStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
   const monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59));
 
-  console.log(`[Recurrence] Período do mês: ${monthStart.toISOString().split('T')[0]} até ${monthEnd.toISOString().split('T')[0]}`);
+  // console.log(`[Recurrence] Período do mês: ${monthStart.toISOString().split('T')[0]} até ${monthEnd.toISOString().split('T')[0]}`);
 
   const transactions: Transaction[] = [];
 
   // Data inicial da recorrência
   let currentDate = new Date(pattern.startDate);
-  console.log(`[Recurrence] Data inicial: ${currentDate.toISOString()}`);
+  // console.log(`[Recurrence] Data inicial: ${currentDate.toISOString()}`);
 
   // Se useLastDayOfMonth está ativado, ajustar para o último dia do mês da data inicial
   if (pattern.useLastDayOfMonth && ['monthly', 'quarterly', 'yearly'].includes(pattern.frequency)) {
     const lastDay = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 0)).getUTCDate();
     currentDate.setUTCDate(lastDay);
-    console.log(`[Recurrence] Ajustado para último dia: ${currentDate.toISOString()}`);
+    // console.log(`[Recurrence] Ajustado para último dia: ${currentDate.toISOString()}`);
   }
 
   // Se a data inicial é depois do mês alvo, não há transações para gerar
   if (currentDate > monthEnd) {
-    console.log(`[Recurrence] ❌ Data inicial depois do mês, retornando vazio`);
+    // console.log(`[Recurrence] ❌ Data inicial depois do mês, retornando vazio`);
     return [];
   }
 
@@ -141,7 +131,7 @@ export function generateRecurringTransactionsForMonth(
   while (currentDate < monthStart) {
     const next = getNextOccurrence(currentDate, pattern);
     if (!next) {
-      console.log(`[Recurrence] ❌ Sem próxima ocorrência antes do mês, retornando vazio`);
+      // console.log(`[Recurrence] ❌ Sem próxima ocorrência antes do mês, retornando vazio`);
       return []; // Recorrência terminou antes do mês alvo
     }
     currentDate = next;
@@ -149,7 +139,7 @@ export function generateRecurringTransactionsForMonth(
   }
 
   if (iterations > 0) {
-    console.log(`[Recurrence] Avançou ${iterations} vezes, agora em: ${currentDate.toISOString().split('T')[0]}`);
+    // console.log(`[Recurrence] Avançou ${iterations} vezes, agora em: ${currentDate.toISOString().split('T')[0]}`);
   }
 
   // Gerar transações para o mês
@@ -157,7 +147,7 @@ export function generateRecurringTransactionsForMonth(
     // Verificar se a transação está dentro do período de recorrência
     if (pattern.endDate) {
       const endDate = new Date(pattern.endDate);
-      console.log(`[Recurrence] Verificando: currentDate (${currentDate.toISOString().split('T')[0]}) > endDate (${endDate.toISOString().split('T')[0]})? ${currentDate > endDate}`);
+      // console.log(`[Recurrence] Verificando: currentDate (${currentDate.toISOString().split('T')[0]}) > endDate (${endDate.toISOString().split('T')[0]})? ${currentDate > endDate}`);
       if (currentDate > endDate) {
         console.log(`[Recurrence] ⚠️ Passou da data final, parando`);
         break;
@@ -165,7 +155,7 @@ export function generateRecurringTransactionsForMonth(
     }
 
     // Criar transação para esta ocorrência
-    console.log(`[Recurrence] ✓ Criando transação para ${currentDate.toISOString().split('T')[0]} (dia ${currentDate.getUTCDate()})`);
+    // console.log(`[Recurrence] ✓ Criando transação para ${currentDate.toISOString().split('T')[0]} (dia ${currentDate.getUTCDate()})`);
     const transaction: Transaction = {
       id: `${parentRecurringId}-${currentDate.getTime()}`,
       type: baseTransaction.type,
@@ -181,13 +171,13 @@ export function generateRecurringTransactionsForMonth(
     // Calcular próxima ocorrência
     const next = getNextOccurrence(currentDate, pattern);
     if (!next) {
-      console.log(`[Recurrence] ⚠️ Sem próxima ocorrência, parando`);
+      // console.log(`[Recurrence] ⚠️ Sem próxima ocorrência, parando`);
       break; // Fim da recorrência
     }
     currentDate = next;
   }
 
-  console.log(`[Recurrence] ✅ Total de transações geradas: ${transactions.length}`);
+  // console.log(`[Recurrence] ✅ Total de transações geradas: ${transactions.length}`);
   return transactions;
 }
 

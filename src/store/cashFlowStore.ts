@@ -509,9 +509,12 @@ export const useCashFlowStore = create<CashFlowStore>()(
               get().generateRecurringTransactionsForMonth(month);
             }
           });
+
+          // Transação recorrente foi salva e gerada - não adicionar manualmente ao dia atual
+          return;
         }
 
-        // Atualizar o dia com a nova transação
+        // Atualizar o dia com a nova transação (apenas para transações não-recorrentes)
         const updatedEntries = monthData.entries.map((entry) => {
           if (entry.day === day) {
             const updatedTransactions = [...(entry.transactions || []), newTransaction];

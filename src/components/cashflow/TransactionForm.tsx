@@ -2,6 +2,18 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TransactionType, RecurrenceFrequency, RecurrencePattern } from '../../types/cashflow';
 
+/**
+ * Converte uma data no formato "YYYY-MM-DD" (do input type="date") para ISO string
+ * em horário local (meia-noite). Isso evita problemas de timezone onde a data pode
+ * ser interpretada como o dia anterior ao converter para UTC.
+ */
+function convertDateToLocalISO(dateString: string): string {
+  // Criar data em horário local (não UTC)
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+  return date.toISOString();
+}
+
 interface TransactionFormProps {
   onSubmit: (
     type: TransactionType,
@@ -62,8 +74,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
     const recurrencePattern: RecurrencePattern | undefined = isRecurring
       ? {
           frequency: recurrenceFrequency,
-          startDate: recurrenceStartDate,
-          endDate: recurrenceEndDate || undefined,
+          startDate: convertDateToLocalISO(recurrenceStartDate),
+          endDate: recurrenceEndDate ? convertDateToLocalISO(recurrenceEndDate) : undefined,
           dayOfMonth: ['monthly', 'quarterly', 'yearly'].includes(recurrenceFrequency) && !useLastDayOfMonth
             ? parseInt(dayOfMonth)
             : undefined,

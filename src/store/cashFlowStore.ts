@@ -9,6 +9,7 @@ import {
 } from '../utils/calculations';
 import { formatMonthString, getMonthName, parseMonthString } from '../utils/formatters';
 import { generateRecurringTransactionsForMonth, shouldGenerateForMonth } from '../utils/recurrence';
+import { cashFlowLogger } from '../utils/logger';
 
 interface CashFlowStore {
   months: Record<string, MonthlyData>;
@@ -62,7 +63,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
       // 🔒 GARANTIR que currentMonth seja SEMPRE o mês atual
       const getCurrentMonth = () => {
         const mesAtual = formatMonthString(new Date());
-        console.log(`[CashFlow Store] 🗓️ Inicializando com mês atual: ${mesAtual}`);
+        // console.log(`[CashFlow Store] 🗓️ Inicializando com mês atual: ${mesAtual}`);
         return mesAtual;
       };
 
@@ -130,7 +131,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
         const month = date.getMonth() + 1;
         const monthName = getMonthName(date.getMonth());
 
-        console.log(`[CashFlow] 📅 Inicializando mês ${monthStr}:`, {
+        // console.log(`[CashFlow] 📅 Inicializando mês ${monthStr}:`, {
           monthStr,
           year,
           month,
@@ -143,7 +144,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
         const entriesWithSaldo = recalculateMonthSaldos(entries, saldoInicial);
         const totals = calculateMonthTotals(entriesWithSaldo);
 
-        console.log(`[CashFlow] ✅ Mês ${monthStr} inicializado com saldo inicial: R$ ${saldoInicial.toLocaleString('pt-BR')}`);
+        // console.log(`[CashFlow] ✅ Mês ${monthStr} inicializado com saldo inicial: R$ ${saldoInicial.toLocaleString('pt-BR')}`);
 
         set((state) => ({
           months: {
@@ -163,13 +164,13 @@ export const useCashFlowStore = create<CashFlowStore>()(
       },
 
       updateDailyEntry: (monthStr: string, day: number, field: keyof DailyEntry, value: number) => {
-        console.log(`[CashFlow] Atualizando ${field} do dia ${day} do mês ${monthStr} para ${value}`);
+        // cashFlowLogger.log(`Atualizando ${field} do dia ${day} do mês ${monthStr} para ${value}`);
 
         const state = get();
         const monthData = state.months[monthStr];
 
         if (!monthData) {
-          console.log(`[CashFlow] Mês ${monthStr} não existe, inicializando...`);
+          // cashFlowLogger.log(`Mês ${monthStr} não existe, inicializando...`);
           get().initializeMonth(monthStr);
           // Tentar novamente após inicialização
           requestAnimationFrame(() => {
@@ -180,7 +181,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
 
         // Não permitir atualizar o campo 'saldo' diretamente - ele é calculado
         if (field === 'saldo') {
-          console.warn('[CashFlow] Tentativa de atualizar campo saldo diretamente - ignorado');
+          // console.warn('[CashFlow] Tentativa de atualizar campo saldo diretamente - ignorado');
           return;
         }
 
@@ -222,7 +223,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
         // Recalcular saldos a partir do saldo inicial do mês
         const saldoInicial = get().getSaldoInicial(monthStr);
 
-        console.log(`[CashFlow] Recalculando saldos do mês ${monthStr} com saldo inicial: ${saldoInicial}`);
+        // cashFlowLogger.log(`Recalculando saldos do mês ${monthStr} com saldo inicial: ${saldoInicial}`);
 
         const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
         const totals = calculateMonthTotals(entriesWithSaldo);
@@ -247,7 +248,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
             },
           }));
 
-          console.log(`[CashFlow] Mês recalculado com saldo inicial 0. Novo saldo final: ${totalsRecalculados.saldoFinal}`);
+          // cashFlowLogger.log(`Mês recalculado com saldo inicial 0. Novo saldo final: ${totalsRecalculados.saldoFinal}`);
         } else {
           // Atualizar o estado com os novos dados
           set((state) => ({
@@ -261,7 +262,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
             },
           }));
 
-          console.log(`[CashFlow] Dia ${day} atualizado com sucesso. Novo saldo: ${entriesWithSaldo.find(e => e.day === day)?.saldo}`);
+          // cashFlowLogger.log(`Dia ${day} atualizado com sucesso. Novo saldo: ${entriesWithSaldo.find(e => e.day === day)?.saldo}`);
         }
 
         // Recalcular meses subsequentes (sem setTimeout para evitar condições de corrida)
@@ -274,29 +275,14 @@ export const useCashFlowStore = create<CashFlowStore>()(
 
             if (!currentMonthData) break;
 
-            // DEBUG: Verificar conversão de datas
-            console.log(`[CashFlow] DEBUG - Criando próxima data a partir de: ${currentMonthStr}`);
-
             // CORREÇÃO: Usar parseMonthString ao invés de concatenar string
             const [yearStr, monthStr] = currentMonthStr.split('-');
             const year = parseInt(yearStr);
             const month = parseInt(monthStr) - 1; // JavaScript usa meses de 0-11
 
             const date = new Date(year, month, 1);
-            const originalMonth = date.getMonth();
             date.setMonth(date.getMonth() + 1);
-            const newMonth = date.getMonth();
             const nextMonthStr = formatMonthString(date);
-
-            console.log(`[CashFlow] DEBUG - Conversão de data:`, {
-              currentMonthStr,
-              ano: year,
-              mes: month + 1,
-              mesOriginal: originalMonth,
-              mesNovo: newMonth,
-              nextMonthStr,
-              dateResultante: date.toISOString()
-            });
 
             // Se não conseguiu avançar para o próximo mês, parar o loop
             if (nextMonthStr === currentMonthStr) {
@@ -311,16 +297,6 @@ export const useCashFlowStore = create<CashFlowStore>()(
             // CORREÇÃO: Garantir conversão para número
             const rawSaldoFinal = currentMonthData.totals.saldoFinal;
             const nextSaldoInicial = typeof rawSaldoFinal === 'string' ? parseFloat(rawSaldoFinal) : Number(rawSaldoFinal);
-
-            console.log(`[CashFlow] DEBUG - Propagando saldo:`, {
-              mesAtual: currentMonthStr,
-              proximoMes: nextMonthStr,
-              saldoFinalBruto: rawSaldoFinal,
-              tipoSaldoFinalBruto: typeof rawSaldoFinal,
-              saldoFinalConvertido: nextSaldoInicial,
-              tipoSaldoFinalConvertido: typeof nextSaldoInicial,
-              entriesUltimoDia: currentMonthData.entries[currentMonthData.entries.length - 1]
-            });
 
             // Validar saldo inicial antes de propagar
             if (Math.abs(nextSaldoInicial) > 100000) {
@@ -413,7 +389,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
         }
 
         // Log para debug de propagação de saldos
-        console.log(`[CashFlow] 💰 getSaldoInicial(${monthStr}):`, {
+        // console.log(`[CashFlow] 💰 getSaldoInicial(${monthStr}):`, {
           mesAnterior: prevMonthStr,
           existe: !!prevMonth,
           saldoFinal: prevMonth?.totals.saldoFinal,
@@ -430,31 +406,31 @@ export const useCashFlowStore = create<CashFlowStore>()(
       },
 
       clearAllData: () => {
-        console.log('[CashFlow] Limpando todos os dados...');
+        // console.log('[CashFlow] Limpando todos os dados...');
         set({
           months: {},
           currentMonth: formatMonthString(new Date()),
         });
         localStorage.removeItem('cashflow-storage');
-        console.log('[CashFlow] Dados limpos com sucesso!');
+        // console.log('[CashFlow] Dados limpos com sucesso!');
       },
 
       deleteMonth: (monthStr: string) => {
-        console.log(`[CashFlow] Deletando mês ${monthStr}...`);
+        // console.log(`[CashFlow] Deletando mês ${monthStr}...`);
         const state = get();
         const newMonths = { ...state.months };
         delete newMonths[monthStr];
         set({ months: newMonths });
-        console.log(`[CashFlow] Mês ${monthStr} deletado!`);
+        // console.log(`[CashFlow] Mês ${monthStr} deletado!`);
       },
 
       sanitizeAllMonths: () => {
-        console.log('[CashFlow] 🔧 Iniciando saneamento de todos os meses...');
+        // console.log('[CashFlow] 🔧 Iniciando saneamento de todos os meses...');
         const state = get();
         const monthKeys = Object.keys(state.months).sort();
 
         if (monthKeys.length === 0) {
-          console.log('[CashFlow] Nenhum mês para sanear.');
+          // console.log('[CashFlow] Nenhum mês para sanear.');
           return;
         }
 
@@ -492,10 +468,10 @@ export const useCashFlowStore = create<CashFlowStore>()(
 
         set({ months: newMonths });
 
-        console.log(`[CashFlow] ✅ Saneamento concluído:`);
-        console.log(`  - ${corrigidos} meses corrigidos`);
-        console.log(`  - ${deletados} meses deletados`);
-        console.log(`  - Saldo final acumulado: R$ ${saldoAcumulado.toLocaleString('pt-BR')}`);
+        // console.log(`[CashFlow] ✅ Saneamento concluído:`);
+        // console.log(`  - ${corrigidos} meses corrigidos`);
+        // console.log(`  - ${deletados} meses deletados`);
+        // console.log(`  - Saldo final acumulado: R$ ${saldoAcumulado.toLocaleString('pt-BR')}`);
       },
 
       // Transaction Actions
@@ -518,13 +494,13 @@ export const useCashFlowStore = create<CashFlowStore>()(
           investmentId?: string;
         }
       ) => {
-        console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}${recurrencePattern ? ' (RECORRENTE)' : ''}${creditCardData?.isCartaoCredito ? ' (CARTÃO)' : ''}${investmentData?.isInvestimento ? ' (INVESTIMENTO)' : ''}`);
+        // console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}${recurrencePattern ? ' (RECORRENTE)' : ''}${creditCardData?.isCartaoCredito ? ' (CARTÃO)' : ''}${investmentData?.isInvestimento ? ' (INVESTIMENTO)' : ''}`);
 
         const state = get();
         const monthData = state.months[monthStr];
 
         if (!monthData) {
-          console.log(`[CashFlow] Mês ${monthStr} não existe, inicializando...`);
+          // console.log(`[CashFlow] Mês ${monthStr} não existe, inicializando...`);
           get().initializeMonth(monthStr);
           // Tentar novamente após inicialização
           requestAnimationFrame(() => {
@@ -555,7 +531,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
 
         // Se for recorrente, armazenar no registro de transações recorrentes
         if (recurrencePattern) {
-          console.log(`[CashFlow] 📅 Salvando transação recorrente com ID: ${newTransaction.id}`);
+          // console.log(`[CashFlow] 📅 Salvando transação recorrente com ID: ${newTransaction.id}`);
           set((state) => ({
             recurringTransactions: {
               ...state.recurringTransactions,
@@ -609,14 +585,14 @@ export const useCashFlowStore = create<CashFlowStore>()(
           },
         }));
 
-        console.log(`[CashFlow] Transação adicionada com sucesso!`);
+        // console.log(`[CashFlow] Transação adicionada com sucesso!`);
 
         // Recalcular meses subsequentes
         get().updateDailyEntry(monthStr, day, 'entrada', entriesWithSaldo.find(e => e.day === day)!.entrada);
       },
 
       updateTransaction: (monthStr: string, day: number, transactionId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => {
-        console.log(`[CashFlow] Atualizando transação ${transactionId} no dia ${day}/${monthStr}`);
+        // console.log(`[CashFlow] Atualizando transação ${transactionId} no dia ${day}/${monthStr}`);
 
         const state = get();
         const monthData = state.months[monthStr];
@@ -666,11 +642,11 @@ export const useCashFlowStore = create<CashFlowStore>()(
           },
         }));
 
-        console.log(`[CashFlow] Transação atualizada com sucesso!`);
+        // console.log(`[CashFlow] Transação atualizada com sucesso!`);
       },
 
       deleteTransaction: (monthStr: string, day: number, transactionId: string) => {
-        console.log(`[CashFlow] Deletando transação ${transactionId} no dia ${day}/${monthStr}`);
+        // console.log(`[CashFlow] Deletando transação ${transactionId} no dia ${day}/${monthStr}`);
 
         const state = get();
         const monthData = state.months[monthStr];
@@ -717,25 +693,25 @@ export const useCashFlowStore = create<CashFlowStore>()(
           },
         }));
 
-        console.log(`[CashFlow] Transação deletada com sucesso!`);
+        // console.log(`[CashFlow] Transação deletada com sucesso!`);
       },
 
       // Recurring Transaction Actions
       generateRecurringTransactionsForMonth: (monthStr: string) => {
-        console.log(`[CashFlow] 📅 Gerando transações recorrentes para o mês ${monthStr}...`);
+        // console.log(`[CashFlow] 📅 Gerando transações recorrentes para o mês ${monthStr}...`);
 
         const state = get();
         const monthData = state.months[monthStr];
 
         if (!monthData) {
-          console.warn(`[CashFlow] Mês ${monthStr} não existe, não é possível gerar transações recorrentes.`);
+          // console.warn(`[CashFlow] Mês ${monthStr} não existe, não é possível gerar transações recorrentes.`);
           return;
         }
 
         const recurringTransactions = Object.values(state.recurringTransactions);
 
         if (recurringTransactions.length === 0) {
-          console.log(`[CashFlow] Nenhuma transação recorrente configurada.`);
+          // console.log(`[CashFlow] Nenhuma transação recorrente configurada.`);
           return;
         }
 
@@ -807,7 +783,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
           });
         });
 
-        console.log(`[CashFlow] ✅ ${transactionsAdded} transações recorrentes geradas para ${monthStr}`);
+        // console.log(`[CashFlow] ✅ ${transactionsAdded} transações recorrentes geradas para ${monthStr}`);
       },
 
       getRecurringTransactions: () => {
@@ -816,7 +792,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
       },
 
       updateRecurringTransaction: (recurringId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => {
-        console.log(`[CashFlow] 📅 Atualizando transação recorrente ${recurringId}...`);
+        // console.log(`[CashFlow] 📅 Atualizando transação recorrente ${recurringId}...`);
 
         const state = get();
         const recurringTx = state.recurringTransactions[recurringId];
@@ -892,11 +868,11 @@ export const useCashFlowStore = create<CashFlowStore>()(
           });
         }
 
-        console.log(`[CashFlow] ✅ Transação recorrente ${recurringId} atualizada!`);
+        // console.log(`[CashFlow] ✅ Transação recorrente ${recurringId} atualizada!`);
       },
 
       deleteRecurringTransaction: (recurringId: string) => {
-        console.log(`[CashFlow] 📅 Deletando série completa da transação recorrente ${recurringId}...`);
+        // console.log(`[CashFlow] 📅 Deletando série completa da transação recorrente ${recurringId}...`);
 
         const state = get();
         const recurringTx = state.recurringTransactions[recurringId];
@@ -959,11 +935,11 @@ export const useCashFlowStore = create<CashFlowStore>()(
           }
         });
 
-        console.log(`[CashFlow] ✅ Série completa da transação recorrente ${recurringId} deletada!`);
+        // console.log(`[CashFlow] ✅ Série completa da transação recorrente ${recurringId} deletada!`);
       },
 
       deleteRecurringOccurrence: (monthStr: string, day: number, transactionId: string) => {
-        console.log(`[CashFlow] Deletando ocorrência única ${transactionId} no dia ${day}/${monthStr}`);
+        // console.log(`[CashFlow] Deletando ocorrência única ${transactionId} no dia ${day}/${monthStr}`);
 
         // Esta função simplesmente chama deleteTransaction, que já remove uma ocorrência específica
         get().deleteTransaction(monthStr, day, transactionId);
@@ -983,10 +959,10 @@ export const useCashFlowStore = create<CashFlowStore>()(
         // 🔒 FORÇAR currentMonth para o mês atual após carregar do localStorage
         if (state) {
           const mesAtual = formatMonthString(new Date());
-          console.log(`[CashFlow Store] 🔄 Após hidratação - Forçando mês atual: ${mesAtual}`);
-          console.log(`[CashFlow Store] 📅 Mês que estava no estado: ${state.currentMonth}`);
+          // console.log(`[CashFlow Store] 🔄 Após hidratação - Forçando mês atual: ${mesAtual}`);
+          // console.log(`[CashFlow Store] 📅 Mês que estava no estado: ${state.currentMonth}`);
           state.currentMonth = mesAtual;
-          console.log(`[CashFlow Store] ✅ Mês atualizado para: ${state.currentMonth}`);
+          // console.log(`[CashFlow Store] ✅ Mês atualizado para: ${state.currentMonth}`);
         }
       },
       migrate: (persistedState: any) => {
@@ -1017,8 +993,8 @@ export const useCashFlowStore = create<CashFlowStore>()(
             }
           });
 
-          console.log(`[Migration v8] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados.`);
-          console.log(`[Migration v8] ⚠️ currentMonth NÃO será persistido - sempre usará mês atual ao inicializar`);
+          // console.log(`[Migration v8] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados.`);
+          // console.log(`[Migration v8] ⚠️ currentMonth NÃO será persistido - sempre usará mês atual ao inicializar`);
 
           return {
             months: monthsCorrigidos,

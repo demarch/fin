@@ -14,7 +14,7 @@ const toSafeNumber = (value: any): number => {
   // Se já é número, validar
   if (typeof value === 'number') {
     if (isNaN(value) || !isFinite(value)) {
-      console.warn('[Calculations] Número inválido detectado:', value, '-> usando 0');
+      // console.warn('[Calculations] Número inválido detectado:', value, '-> usando 0');
       return 0;
     }
     // Limitar valores extremos
@@ -38,7 +38,7 @@ const toSafeNumber = (value: any): number => {
 
     // Validação
     if (isNaN(num) || !isFinite(num)) {
-      console.warn('[Calculations] String inválida para conversão:', value, '-> usando 0');
+      // console.warn('[Calculations] String inválida para conversão:', value, '-> usando 0');
       return 0;
     }
 
@@ -53,7 +53,7 @@ const toSafeNumber = (value: any): number => {
   }
 
   // Qualquer outro tipo
-  console.warn('[Calculations] Tipo inesperado para conversão:', typeof value, value, '-> usando 0');
+  // console.warn('[Calculations] Tipo inesperado para conversão:', typeof value, value, '-> usando 0');
   return 0;
 };
 
@@ -126,11 +126,6 @@ export const recalculateMonthSaldos = (
   // 🔒 GARANTIR que saldo inicial é número seguro
   let currentSaldo = toSafeNumber(saldoInicial);
 
-  console.log(`[Calculations] 🔢 recalculateMonthSaldos iniciado:`, {
-    saldoInicial: currentSaldo,
-    totalDias: entries.length,
-    primeiroDia: entries[0]?.day
-  });
 
   // Validar saldo inicial
   const MAX_SALDO = 10000000; // R$ 10 milhões - alinhado com MAX_VALUE para transações individuais
@@ -149,37 +144,17 @@ export const recalculateMonthSaldos = (
     const movimento = entrada - saida - diario;
 
     // Calcular novo saldo
-    const novoSaldo = currentSaldo + movimento;
-
-    // Log detalhado apenas para os primeiros 3 dias
-    if (index < 3) {
-      console.log(`[Calculations] 📅 Dia ${entry.day}:`, {
-        saldoAnterior: currentSaldo,
-        entrada,
-        saida,
-        diario,
         movimento,
         novoSaldo,
         formula: `${currentSaldo} + ${entrada} - ${saida} - ${diario} = ${novoSaldo}`
       });
     }
-
-    // Validação de sanidade do novo saldo
-    if (Math.abs(novoSaldo) > MAX_SALDO) {
-      console.error(`[Calculations] ⚠️ SALDO ABSURDO no dia ${entry.day}: R$ ${novoSaldo.toFixed(2)} (limite: R$ ${MAX_SALDO.toLocaleString('pt-BR')})`);
-      console.error('  Detalhes:', {
-        dia: entry.day,
-        saldoAnterior: currentSaldo.toFixed(2),
-        entrada: entrada.toFixed(2),
-        saida: saida.toFixed(2),
-        diario: diario.toFixed(2),
-        movimento: movimento.toFixed(2),
         saldoCalculado: novoSaldo.toFixed(2)
       });
 
       // Em caso de saldo absurdo, usar apenas o movimento do dia
       currentSaldo = movimento;
-      console.log(`[Calculations] Saldo corrigido para: R$ ${currentSaldo.toFixed(2)}`);
+      // console.log(`[Calculations] Saldo corrigido para: R$ ${currentSaldo.toFixed(2)}`);
     } else {
       currentSaldo = novoSaldo;
     }
@@ -297,7 +272,7 @@ export const sanitizeAndRecalculate = (
   entries: DailyEntry[],
   saldoInicial: number = 0
 ): DailyEntry[] => {
-  console.log('[Calculations] 🔧 SANITIZAÇÃO EMERGENCIAL iniciada...');
+  // console.log('[Calculations] 🔧 SANITIZAÇÃO EMERGENCIAL iniciada...');
 
   // Limpar e validar todos os valores
   const cleanedEntries = entries.map(entry => ({
@@ -312,7 +287,7 @@ export const sanitizeAndRecalculate = (
   // Recalcular com saldo inicial zero se não fornecido
   const result = recalculateMonthSaldos(cleanedEntries, saldoInicial);
 
-  console.log('[Calculations] ✅ Sanitização concluída');
+  // console.log('[Calculations] ✅ Sanitização concluída');
 
   return result;
 };

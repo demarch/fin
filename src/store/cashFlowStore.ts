@@ -58,9 +58,17 @@ interface CashFlowStore {
 
 export const useCashFlowStore = create<CashFlowStore>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      // 🔒 GARANTIR que currentMonth seja SEMPRE o mês atual
+      const getCurrentMonth = () => {
+        const mesAtual = formatMonthString(new Date());
+        console.log(`[CashFlow Store] 🗓️ Inicializando com mês atual: ${mesAtual}`);
+        return mesAtual;
+      };
+
+      return {
       months: {},
-      currentMonth: formatMonthString(new Date()),
+      currentMonth: getCurrentMonth(),
       recurringTransactions: {},
 
       initializeMonth: (monthStr: string) => {
@@ -951,7 +959,8 @@ export const useCashFlowStore = create<CashFlowStore>()(
         // Esta função simplesmente chama deleteTransaction, que já remove uma ocorrência específica
         get().deleteTransaction(monthStr, day, transactionId);
       },
-    }),
+    };
+  },
     {
       name: 'cashflow-storage',
       version: 8, // 🔧 VERSÃO 8 - Corrige inicialização do currentMonth para sempre usar mês atual
@@ -961,6 +970,16 @@ export const useCashFlowStore = create<CashFlowStore>()(
         recurringTransactions: state.recurringTransactions,
         // currentMonth não será persistido
       }),
+      onRehydrateStorage: () => (state) => {
+        // 🔒 FORÇAR currentMonth para o mês atual após carregar do localStorage
+        if (state) {
+          const mesAtual = formatMonthString(new Date());
+          console.log(`[CashFlow Store] 🔄 Após hidratação - Forçando mês atual: ${mesAtual}`);
+          console.log(`[CashFlow Store] 📅 Mês que estava no estado: ${state.currentMonth}`);
+          state.currentMonth = mesAtual;
+          console.log(`[CashFlow Store] ✅ Mês atualizado para: ${state.currentMonth}`);
+        }
+      },
       migrate: (persistedState: any) => {
         // Migração da versão anterior
         if (persistedState?.months) {

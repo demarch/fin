@@ -26,7 +26,21 @@ interface CashFlowStore {
   sanitizeAllMonths: () => void;
 
   // Transaction Actions
-  addTransaction: (monthStr: string, day: number, type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => void;
+  addTransaction: (
+    monthStr: string,
+    day: number,
+    type: TransactionType,
+    description: string,
+    amount: number,
+    category?: string,
+    recurrencePattern?: RecurrencePattern,
+    creditCardData?: {
+      isCartaoCredito?: boolean;
+      cartaoCreditoId?: string;
+      creditCardTransactionId?: string;
+      isFaturaConsolidada?: boolean;
+    }
+  ) => void;
   updateTransaction: (monthStr: string, day: number, transactionId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => void;
   deleteTransaction: (monthStr: string, day: number, transactionId: string) => void;
 
@@ -464,8 +478,22 @@ export const useCashFlowStore = create<CashFlowStore>()(
       },
 
       // Transaction Actions
-      addTransaction: (monthStr: string, day: number, type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => {
-        console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}${recurrencePattern ? ' (RECORRENTE)' : ''}`);
+      addTransaction: (
+        monthStr: string,
+        day: number,
+        type: TransactionType,
+        description: string,
+        amount: number,
+        category?: string,
+        recurrencePattern?: RecurrencePattern,
+        creditCardData?: {
+          isCartaoCredito?: boolean;
+          cartaoCreditoId?: string;
+          creditCardTransactionId?: string;
+          isFaturaConsolidada?: boolean;
+        }
+      ) => {
+        console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}${recurrencePattern ? ' (RECORRENTE)' : ''}${creditCardData?.isCartaoCredito ? ' (CARTÃO)' : ''}`);
 
         const state = get();
         const monthData = state.months[monthStr];
@@ -475,7 +503,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
           get().initializeMonth(monthStr);
           // Tentar novamente após inicialização
           requestAnimationFrame(() => {
-            get().addTransaction(monthStr, day, type, description, amount, category, recurrencePattern);
+            get().addTransaction(monthStr, day, type, description, amount, category, recurrencePattern, creditCardData);
           });
           return;
         }
@@ -490,6 +518,11 @@ export const useCashFlowStore = create<CashFlowStore>()(
           createdAt: new Date().toISOString(),
           isRecurring: !!recurrencePattern,
           recurrencePattern,
+          // Campos de cartão de crédito
+          isCartaoCredito: creditCardData?.isCartaoCredito,
+          cartaoCreditoId: creditCardData?.cartaoCreditoId,
+          creditCardTransactionId: creditCardData?.creditCardTransactionId,
+          isFaturaConsolidada: creditCardData?.isFaturaConsolidada,
         };
 
         // Se for recorrente, armazenar no registro de transações recorrentes

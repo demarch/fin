@@ -6,6 +6,7 @@ import MonthGrid from '../components/cashflow/MonthGrid';
 import Card from '../components/common/Card';
 import { EmergencyReset } from '../components/cashflow/EmergencyReset';
 import { RecurringTransactionsManager } from '../components/cashflow/RecurringTransactionsManager';
+import { processarTransacaoCartao } from '../utils/creditCardIntegration';
 
 export default function CashFlow() {
   const {
@@ -152,9 +153,31 @@ export default function CashFlow() {
             onUpdateEntry={(day, field, value) =>
               updateDailyEntry(currentMonth, day, field, value)
             }
-            onAddTransaction={(day, type, description, amount, category, recurrencePattern) =>
-              addTransaction(currentMonth, day, type, description, amount, category, recurrencePattern)
-            }
+            onAddTransaction={(day, type, description, amount, category, recurrencePattern, creditCardData) => {
+              if (creditCardData?.isCartaoCredito && creditCardData.cartaoCreditoId) {
+                // Processar transação de cartão de crédito
+                const [ano, mes] = currentMonth.split('-').map(Number);
+                const dataCompra = new Date(ano, mes - 1, day).toISOString();
+
+                try {
+                  processarTransacaoCartao(
+                    creditCardData.cartaoCreditoId,
+                    description,
+                    amount,
+                    dataCompra,
+                    category,
+                    creditCardData.parcelado,
+                    creditCardData.numeroParcelas
+                  );
+                } catch (error) {
+                  console.error('Erro ao processar transação de cartão:', error);
+                  alert('Erro ao processar transação de cartão. Tente novamente.');
+                }
+              } else {
+                // Processar transação normal
+                addTransaction(currentMonth, day, type, description, amount, category, recurrencePattern);
+              }
+            }}
             onDeleteTransaction={(day, transactionId) =>
               deleteTransaction(currentMonth, day, transactionId)
             }

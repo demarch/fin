@@ -5,7 +5,20 @@ import { formatCurrency } from '../../utils/formatters';
 interface MonthGridProps {
   monthData: MonthlyData;
   onUpdateEntry: (day: number, field: keyof import('../../types/cashflow').DailyEntry, value: number) => void;
-  onAddTransaction: (day: number, type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => void;
+  onAddTransaction: (
+    day: number,
+    type: TransactionType,
+    description: string,
+    amount: number,
+    category?: string,
+    recurrencePattern?: RecurrencePattern,
+    creditCardData?: {
+      isCartaoCredito: boolean;
+      cartaoCreditoId?: string;
+      parcelado?: boolean;
+      numeroParcelas?: number;
+    }
+  ) => void;
   onDeleteTransaction: (day: number, transactionId: string) => void;
   onDeleteSeries?: (recurringId: string) => void;
 }

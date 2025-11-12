@@ -8,7 +8,19 @@ interface DayRowProps {
   entry: DailyEntry;
   monthStr: string;
   onUpdate: (field: keyof DailyEntry, value: number) => void;
-  onAddTransaction: (type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => void;
+  onAddTransaction: (
+    type: TransactionType,
+    description: string,
+    amount: number,
+    category?: string,
+    recurrencePattern?: RecurrencePattern,
+    creditCardData?: {
+      isCartaoCredito: boolean;
+      cartaoCreditoId?: string;
+      parcelado?: boolean;
+      numeroParcelas?: number;
+    }
+  ) => void;
   onDeleteTransaction: (transactionId: string) => void;
   onDeleteSeries?: (recurringId: string) => void;
   isToday?: boolean;
@@ -33,9 +45,15 @@ export default function DayRow({
     description: string,
     amount: number,
     category?: string,
-    recurrencePattern?: RecurrencePattern
+    recurrencePattern?: RecurrencePattern,
+    creditCardData?: {
+      isCartaoCredito: boolean;
+      cartaoCreditoId?: string;
+      parcelado?: boolean;
+      numeroParcelas?: number;
+    }
   ) => {
-    onAddTransaction(type, description, amount, category, recurrencePattern);
+    onAddTransaction(type, description, amount, category, recurrencePattern, creditCardData);
     setShowTransactionForm(false);
   };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TransactionType, RecurrenceFrequency, RecurrencePattern } from '../../types/cashflow';
+import { useCreditCardStore } from '../../store/creditCardStore';
 
 /**
  * Converte uma data no formato "YYYY-MM-DD" (do input type="date") para ISO string
@@ -20,13 +21,22 @@ interface TransactionFormProps {
     description: string,
     amount: number,
     category?: string,
-    recurrencePattern?: RecurrencePattern
+    recurrencePattern?: RecurrencePattern,
+    creditCardData?: {
+      isCartaoCredito: boolean;
+      cartaoCreditoId?: string;
+      parcelado?: boolean;
+      numeroParcelas?: number;
+    }
   ) => void;
   onCancel: () => void;
   initialDay?: number; // Dia do mês para sugerir como data inicial
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCancel, initialDay }) => {
+  const { getCartoesAtivos } = useCreditCardStore();
+  const cartoesAtivos = getCartoesAtivos();
+
   const [type, setType] = useState<TransactionType>('receita');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -37,6 +47,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState(initialDay?.toString() || '1');
   const [useLastDayOfMonth, setUseLastDayOfMonth] = useState(false);
+
+  // Campos de Cartão de Crédito
+  const [isCartaoCredito, setIsCartaoCredito] = useState(false);
+  const [cartaoCreditoId, setCartaoCreditoId] = useState('');
+  const [isParcelado, setIsParcelado] = useState(false);
+  const [numeroParcelas, setNumeroParcelas] = useState('1');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +67,28 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
     if (isNaN(amountNum) || amountNum <= 0) {
       alert('Por favor, informe um valor válido');
       return;
+    }
+
+    // Validações de cartão de crédito
+    if (isCartaoCredito) {
+      if (!cartaoCreditoId) {
+        alert('Por favor, selecione um cartão de crédito');
+        return;
+      }
+
+      if (isParcelado) {
+        const parcelas = parseInt(numeroParcelas);
+        if (isNaN(parcelas) || parcelas < 2 || parcelas > 48) {
+          alert('Por favor, informe um número de parcelas válido (2-48)');
+          return;
+        }
+      }
+
+      // Não permitir transação de cartão recorrente ao mesmo tempo
+      if (isRecurring) {
+        alert('Transações de cartão não podem ser recorrentes. Use o parcelamento para dividir o valor.');
+        return;
+      }
     }
 
     // Validações de recorrência
@@ -85,7 +123,17 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
         }
       : undefined;
 
-    onSubmit(type, description.trim(), amountNum, category.trim() || undefined, recurrencePattern);
+    // Construir dados de cartão de crédito se aplicável
+    const creditCardData = isCartaoCredito
+      ? {
+          isCartaoCredito: true,
+          cartaoCreditoId,
+          parcelado: isParcelado,
+          numeroParcelas: isParcelado ? parseInt(numeroParcelas) : undefined,
+        }
+      : undefined;
+
+    onSubmit(type, description.trim(), amountNum, category.trim() || undefined, recurrencePattern, creditCardData);
 
     // Resetar formulário
     setDescription('');
@@ -96,6 +144,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
     setRecurrenceEndDate('');
     setDayOfMonth(initialDay?.toString() || '1');
     setUseLastDayOfMonth(false);
+    setIsCartaoCredito(false);
+    setCartaoCreditoId('');
+    setIsParcelado(false);
+    setNumeroParcelas('1');
   };
 
   return createPortal(
@@ -189,6 +241,99 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, onCa
               placeholder="Ex: Alimentação, Transporte, Lazer..."
             />
           </div>
+
+          {/* Cartão de Crédito (apenas para despesas) */}
+          {type === 'despesa' && cartoesAtivos.length > 0 && (
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isCartaoCredito}
+                  onChange={(e) => {
+                    setIsCartaoCredito(e.target.checked);
+                    if (!e.target.checked) {
+                      setCartaoCreditoId('');
+                      setIsParcelado(false);
+                      setNumeroParcelas('1');
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Pagar com cartão de crédito
+                </span>
+              </label>
+            </div>
+          )}
+
+          {/* Campos de Cartão de Crédito */}
+          {isCartaoCredito && (
+            <div className="mb-4 p-4 bg-purple-50 rounded border border-purple-200">
+              {/* Selecionar Cartão */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Selecione o cartão
+                </label>
+                <select
+                  value={cartaoCreditoId}
+                  onChange={(e) => setCartaoCreditoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  required={isCartaoCredito}
+                >
+                  <option value="">Selecione um cartão...</option>
+                  {cartoesAtivos.map((cartao) => (
+                    <option key={cartao.id} value={cartao.id}>
+                      {cartao.nome} - {cartao.banco}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Parcelamento */}
+              <div className="mb-3">
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <input
+                    type="checkbox"
+                    checked={isParcelado}
+                    onChange={(e) => {
+                      setIsParcelado(e.target.checked);
+                      if (!e.target.checked) {
+                        setNumeroParcelas('1');
+                      }
+                    }}
+                    className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Parcelar compra
+                  </span>
+                </label>
+
+                {isParcelado && (
+                  <>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número de parcelas (2-48)
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="48"
+                      value={numeroParcelas}
+                      onChange={(e) => setNumeroParcelas(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Ex: 12"
+                      required={isParcelado}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Valor da parcela: R${' '}
+                      {amount && !isNaN(parseFloat(amount.replace(',', '.')))
+                        ? (parseFloat(amount.replace(',', '.')) / parseInt(numeroParcelas || '1')).toFixed(2)
+                        : '0,00'}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Recorrência */}
           <div className="mb-4">

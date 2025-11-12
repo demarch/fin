@@ -1,9 +1,13 @@
 // Layout e estrutura
 export { default as Card } from './Card';
 export { default as Header } from './Header';
+export { Modal } from './Modal';
 
 // Inputs
 export { default as CurrencyInput } from './CurrencyInput';
+
+// Buttons
+export { Button } from './Button';
 
 // Feedback e notificações
 export { default as Toast } from './Toast';

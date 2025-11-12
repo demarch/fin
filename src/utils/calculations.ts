@@ -223,6 +223,34 @@ export const calculateMonthTotals = (entries: DailyEntry[]) => {
 };
 
 /**
+ * Calcula os totais de um mês até um dia específico
+ * Usado no dashboard para mostrar apenas dados até o dia atual
+ */
+export const calculateMonthTotalsUpToDay = (entries: DailyEntry[], upToDay: number) => {
+  // Filtrar apenas os dias até o dia especificado
+  const filteredEntries = entries.filter(entry => entry.day <= upToDay);
+
+  if (filteredEntries.length === 0) {
+    return {
+      totalEntradas: 0,
+      totalSaidas: 0,
+      saldoFinal: 0,
+    };
+  }
+
+  const totalEntradas = filteredEntries.reduce((sum, entry) => sum + toSafeNumber(entry.entrada), 0);
+  const totalSaidas = filteredEntries.reduce((sum, entry) => sum + toSafeNumber(entry.saida), 0);
+  const ultimaEntry = filteredEntries[filteredEntries.length - 1];
+  const saldoFinal = ultimaEntry?.saldo || 0;
+
+  return {
+    totalEntradas: Math.round(totalEntradas * 100) / 100,
+    totalSaidas: Math.round(totalSaidas * 100) / 100,
+    saldoFinal: Math.round(toSafeNumber(saldoFinal) * 100) / 100,
+  };
+};
+
+/**
  * Cria entradas diárias vazias para um mês
  */
 export const createEmptyMonthEntries = (year: number, month: number): DailyEntry[] => {

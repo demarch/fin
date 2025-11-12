@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, PiggyBank, BarChart3 } from 'lucide-react';
 import { useCashFlowStore } from '../store/cashFlowStore';
 import { useLoansStore } from '../store/loansStore';
 import { formatCurrency } from '../utils/formatters';
+import { calculateMonthTotalsUpToDay } from '../utils/calculations';
 import SummaryCard from '../components/dashboard/SummaryCard';
 import Card from '../components/common/Card';
 
@@ -17,15 +18,41 @@ export default function Dashboard() {
   const monthData = months[currentMonth];
   const totalLoansRemaining = getTotalRemainingAmount();
 
+  // Calcular dados apenas até o dia atual
+  const currentDayTotals = useMemo(() => {
+    if (!monthData) {
+      return { totalEntradas: 0, totalSaidas: 0, saldoFinal: 0 };
+    }
+
+    const today = new Date();
+    const [currentYear, currentMonthNum] = currentMonth.split('-').map(Number);
+    const isCurrentMonth =
+      today.getFullYear() === currentYear &&
+      (today.getMonth() + 1) === currentMonthNum;
+
+    // Se for o mês atual, calcular apenas até hoje
+    // Se for mês passado, usar todos os dados do mês
+    // Se for mês futuro, mostrar zero
+    if (isCurrentMonth) {
+      const currentDay = today.getDate();
+      return calculateMonthTotalsUpToDay(monthData.entries, currentDay);
+    } else if (currentYear < today.getFullYear() ||
+               (currentYear === today.getFullYear() && currentMonthNum < (today.getMonth() + 1))) {
+      // Mês passado - usar todos os dados
+      return monthData.totals;
+    } else {
+      // Mês futuro - retornar zeros
+      return { totalEntradas: 0, totalSaidas: 0, saldoFinal: 0 };
+    }
+  }, [monthData, currentMonth]);
+
   // Calculate available for investment (8.1% of income as per spreadsheet)
   const investmentPercentage = 8.1;
-  const totalEntradas = monthData?.totals.totalEntradas || 0;
+  const totalEntradas = currentDayTotals.totalEntradas;
   const availableForInvestment = (totalEntradas * investmentPercentage) / 100;
 
   // Calculate performance (entradas - saidas)
-  const performance = monthData
-    ? monthData.totals.totalEntradas - monthData.totals.totalSaidas
-    : 0;
+  const performance = currentDayTotals.totalEntradas - currentDayTotals.totalSaidas;
 
   // Get last 6 months for trend
   const last6Months = Object.keys(months)
@@ -53,21 +80,21 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <SummaryCard
             title="Saldo Atual"
-            value={formatCurrency(monthData?.totals.saldoFinal || 0)}
+            value={formatCurrency(currentDayTotals.saldoFinal)}
             icon={<DollarSign className="h-6 w-6" />}
-            color={monthData && monthData.totals.saldoFinal >= 0 ? 'green' : 'red'}
+            color={currentDayTotals.saldoFinal >= 0 ? 'green' : 'red'}
           />
 
           <SummaryCard
             title="Entradas do Mês"
-            value={formatCurrency(monthData?.totals.totalEntradas || 0)}
+            value={formatCurrency(currentDayTotals.totalEntradas)}
             icon={<TrendingUp className="h-6 w-6" />}
             color="green"
           />
 
           <SummaryCard
             title="Saídas do Mês"
-            value={formatCurrency(monthData?.totals.totalSaidas || 0)}
+            value={formatCurrency(currentDayTotals.totalSaidas)}
             icon={<TrendingDown className="h-6 w-6" />}
             color="red"
           />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { DailyEntry, TransactionType } from '../../types/cashflow';
+import type { DailyEntry, TransactionType, RecurrencePattern } from '../../types/cashflow';
 import CurrencyInput from '../common/CurrencyInput';
 import { TransactionForm } from './TransactionForm';
 import { TransactionsList } from './TransactionsList';
@@ -8,7 +8,7 @@ interface DayRowProps {
   entry: DailyEntry;
   monthStr: string;
   onUpdate: (field: keyof DailyEntry, value: number) => void;
-  onAddTransaction: (type: TransactionType, description: string, amount: number, category?: string) => void;
+  onAddTransaction: (type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => void;
   onDeleteTransaction: (transactionId: string) => void;
   isToday?: boolean;
 }
@@ -26,8 +26,14 @@ export default function DayRow({
   const hasMovement = entry.entrada > 0 || entry.saida > 0 || entry.diario > 0;
   const transactionsCount = entry.transactions?.length || 0;
 
-  const handleAddTransaction = (type: TransactionType, description: string, amount: number, category?: string) => {
-    onAddTransaction(type, description, amount, category);
+  const handleAddTransaction = (
+    type: TransactionType,
+    description: string,
+    amount: number,
+    category?: string,
+    recurrencePattern?: RecurrencePattern
+  ) => {
+    onAddTransaction(type, description, amount, category, recurrencePattern);
     setShowTransactionForm(false);
   };
 
@@ -146,6 +152,7 @@ export default function DayRow({
         <TransactionForm
           onSubmit={handleAddTransaction}
           onCancel={() => setShowTransactionForm(false)}
+          initialDay={entry.day}
         />
       )}
     </>

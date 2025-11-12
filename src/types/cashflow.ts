@@ -1,5 +1,14 @@
 export type TransactionType = 'receita' | 'despesa' | 'diario';
 
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+
+export interface RecurrencePattern {
+  frequency: RecurrenceFrequency;
+  startDate: string; // ISO string
+  endDate?: string; // ISO string, opcional (se não informado, recorre indefinidamente)
+  dayOfMonth?: number; // Para recorrências mensais, trimestrais e anuais (1-31)
+}
+
 export interface Transaction {
   id: string;
   type: TransactionType;
@@ -7,6 +16,9 @@ export interface Transaction {
   amount: number;
   category?: string;
   createdAt: string; // ISO string
+  isRecurring?: boolean; // Indica se é uma transação recorrente
+  recurrencePattern?: RecurrencePattern; // Padrão de recorrência
+  parentRecurringId?: string; // ID da transação recorrente pai (para transações geradas automaticamente)
 }
 
 export interface DailyEntry {

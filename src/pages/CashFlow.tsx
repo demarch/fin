@@ -129,8 +129,8 @@ export default function CashFlow() {
             onUpdateEntry={(day, field, value) =>
               updateDailyEntry(currentMonth, day, field, value)
             }
-            onAddTransaction={(day, type, description, amount, category) =>
-              addTransaction(currentMonth, day, type, description, amount, category)
+            onAddTransaction={(day, type, description, amount, category, recurrencePattern) =>
+              addTransaction(currentMonth, day, type, description, amount, category, recurrencePattern)
             }
             onDeleteTransaction={(day, transactionId) =>
               deleteTransaction(currentMonth, day, transactionId)

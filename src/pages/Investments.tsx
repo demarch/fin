@@ -6,6 +6,7 @@ import { InvestmentCard } from '../components/investment/InvestmentCard';
 import type { Investment, InvestmentType, InvestmentFilter } from '../types/investment';
 import { INVESTMENT_TYPE_LABELS } from '../types/investment';
 import { formatCurrency } from '../utils/formatters';
+import { removerInvestimento, registrarResgateInvestimento } from '../utils/investmentIntegration';
 
 export const Investments: React.FC = () => {
   const {
@@ -13,8 +14,6 @@ export const Investments: React.FC = () => {
     getInvestimentosFiltrados,
     addInvestimento,
     updateInvestimento,
-    deleteInvestimento,
-    resgatar,
     getSummary,
     getBancosUnicos,
   } = useInvestmentStore();
@@ -61,7 +60,9 @@ export const Investments: React.FC = () => {
   };
 
   const handleDeleteInvestimento = (investment: Investment) => {
-    deleteInvestimento(investment.id);
+    if (window.confirm(`Tem certeza que deseja excluir o investimento "${investment.descricao}"? Isso também removerá o lançamento do fluxo de caixa.`)) {
+      removerInvestimento(investment.id);
+    }
   };
 
   const handleSubmit = (data: Omit<Investment, 'id' | 'createdAt'>) => {
@@ -101,7 +102,7 @@ export const Investments: React.FC = () => {
       return;
     }
 
-    resgatar(resgatandoInvestment.id, valor, new Date(dataResgate).toISOString());
+    registrarResgateInvestimento(resgatandoInvestment.id, valor, new Date(dataResgate).toISOString());
     setShowResgateModal(false);
     setResgatandoInvestment(undefined);
     setValorResgate('');

@@ -1,15 +1,16 @@
-import type { MonthlyData, TransactionType } from '../../types/cashflow';
+import type { MonthlyData, TransactionType, RecurrencePattern } from '../../types/cashflow';
 import DayRow from './DayRow';
 import { formatCurrency } from '../../utils/formatters';
 
 interface MonthGridProps {
   monthData: MonthlyData;
   onUpdateEntry: (day: number, field: keyof import('../../types/cashflow').DailyEntry, value: number) => void;
-  onAddTransaction: (day: number, type: TransactionType, description: string, amount: number, category?: string) => void;
+  onAddTransaction: (day: number, type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => void;
   onDeleteTransaction: (day: number, transactionId: string) => void;
+  onDeleteSeries?: (recurringId: string) => void;
 }
 
-export default function MonthGrid({ monthData, onUpdateEntry, onAddTransaction, onDeleteTransaction }: MonthGridProps) {
+export default function MonthGrid({ monthData, onUpdateEntry, onAddTransaction, onDeleteTransaction, onDeleteSeries }: MonthGridProps) {
   const today = new Date();
   const isCurrentMonth =
     today.getFullYear() === monthData.year &&
@@ -48,12 +49,13 @@ export default function MonthGrid({ monthData, onUpdateEntry, onAddTransaction, 
               entry={entry}
               monthStr={monthData.month}
               onUpdate={(field, value) => onUpdateEntry(entry.day, field, value)}
-              onAddTransaction={(type, description, amount, category) =>
-                onAddTransaction(entry.day, type, description, amount, category)
+              onAddTransaction={(type, description, amount, category, recurrencePattern) =>
+                onAddTransaction(entry.day, type, description, amount, category, recurrencePattern)
               }
               onDeleteTransaction={(transactionId) =>
                 onDeleteTransaction(entry.day, transactionId)
               }
+              onDeleteSeries={onDeleteSeries}
               isToday={isCurrentMonth && entry.day === currentDay}
             />
           ))}

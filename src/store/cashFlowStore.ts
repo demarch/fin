@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DailyEntry, MonthlyData, Transaction, TransactionType } from '../types/cashflow';
+import type { DailyEntry, MonthlyData, Transaction, TransactionType, RecurrencePattern } from '../types/cashflow';
 import {
   recalculateMonthSaldos,
   calculateMonthTotals,
@@ -8,10 +8,12 @@ import {
   calculateTotalsFromTransactions,
 } from '../utils/calculations';
 import { formatMonthString, getMonthName, parseMonthString } from '../utils/formatters';
+import { generateRecurringTransactionsForMonth, shouldGenerateForMonth } from '../utils/recurrence';
 
 interface CashFlowStore {
   months: Record<string, MonthlyData>;
   currentMonth: string;
+  recurringTransactions: Record<string, Transaction>; // Transações recorrentes base (templates)
 
   // Actions
   initializeMonth: (monthStr: string) => void;
@@ -24,9 +26,16 @@ interface CashFlowStore {
   sanitizeAllMonths: () => void;
 
   // Transaction Actions
-  addTransaction: (monthStr: string, day: number, type: TransactionType, description: string, amount: number, category?: string) => void;
+  addTransaction: (monthStr: string, day: number, type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => void;
   updateTransaction: (monthStr: string, day: number, transactionId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => void;
   deleteTransaction: (monthStr: string, day: number, transactionId: string) => void;
+
+  // Recurring Transaction Actions
+  generateRecurringTransactionsForMonth: (monthStr: string) => void;
+  getRecurringTransactions: () => Transaction[];
+  updateRecurringTransaction: (recurringId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => void;
+  deleteRecurringTransaction: (recurringId: string) => void; // Deleta toda a série
+  deleteRecurringOccurrence: (monthStr: string, day: number, transactionId: string) => void; // Deleta apenas uma ocorrência
 }
 
 export const useCashFlowStore = create<CashFlowStore>()(
@@ -34,6 +43,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
     (set, get) => ({
       months: {},
       currentMonth: formatMonthString(new Date()),
+      recurringTransactions: {},
 
       initializeMonth: (monthStr: string) => {
         const state = get();
@@ -112,6 +122,9 @@ export const useCashFlowStore = create<CashFlowStore>()(
             },
           },
         }));
+
+        // Gerar transações recorrentes para este mês
+        get().generateRecurringTransactionsForMonth(monthStr);
       },
 
       updateDailyEntry: (monthStr: string, day: number, field: keyof DailyEntry, value: number) => {
@@ -451,8 +464,8 @@ export const useCashFlowStore = create<CashFlowStore>()(
       },
 
       // Transaction Actions
-      addTransaction: (monthStr: string, day: number, type: TransactionType, description: string, amount: number, category?: string) => {
-        console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}`);
+      addTransaction: (monthStr: string, day: number, type: TransactionType, description: string, amount: number, category?: string, recurrencePattern?: RecurrencePattern) => {
+        console.log(`[CashFlow] Adicionando transação: ${type} de R$ ${amount} no dia ${day}/${monthStr}${recurrencePattern ? ' (RECORRENTE)' : ''}`);
 
         const state = get();
         const monthData = state.months[monthStr];
@@ -462,7 +475,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
           get().initializeMonth(monthStr);
           // Tentar novamente após inicialização
           requestAnimationFrame(() => {
-            get().addTransaction(monthStr, day, type, description, amount, category);
+            get().addTransaction(monthStr, day, type, description, amount, category, recurrencePattern);
           });
           return;
         }
@@ -475,7 +488,28 @@ export const useCashFlowStore = create<CashFlowStore>()(
           amount,
           category,
           createdAt: new Date().toISOString(),
+          isRecurring: !!recurrencePattern,
+          recurrencePattern,
         };
+
+        // Se for recorrente, armazenar no registro de transações recorrentes
+        if (recurrencePattern) {
+          console.log(`[CashFlow] 📅 Salvando transação recorrente com ID: ${newTransaction.id}`);
+          set((state) => ({
+            recurringTransactions: {
+              ...state.recurringTransactions,
+              [newTransaction.id]: newTransaction,
+            },
+          }));
+
+          // Gerar transações recorrentes para todos os meses existentes
+          const allMonths = Object.keys(get().months);
+          allMonths.forEach((month) => {
+            if (shouldGenerateForMonth(recurrencePattern, month)) {
+              get().generateRecurringTransactionsForMonth(month);
+            }
+          });
+        }
 
         // Atualizar o dia com a nova transação
         const updatedEntries = monthData.entries.map((entry) => {
@@ -621,12 +655,261 @@ export const useCashFlowStore = create<CashFlowStore>()(
 
         console.log(`[CashFlow] Transação deletada com sucesso!`);
       },
+
+      // Recurring Transaction Actions
+      generateRecurringTransactionsForMonth: (monthStr: string) => {
+        console.log(`[CashFlow] 📅 Gerando transações recorrentes para o mês ${monthStr}...`);
+
+        const state = get();
+        const monthData = state.months[monthStr];
+
+        if (!monthData) {
+          console.warn(`[CashFlow] Mês ${monthStr} não existe, não é possível gerar transações recorrentes.`);
+          return;
+        }
+
+        const recurringTransactions = Object.values(state.recurringTransactions);
+
+        if (recurringTransactions.length === 0) {
+          console.log(`[CashFlow] Nenhuma transação recorrente configurada.`);
+          return;
+        }
+
+        let transactionsAdded = 0;
+
+        // Para cada transação recorrente, gerar ocorrências para este mês
+        recurringTransactions.forEach((recurringTx) => {
+          if (!recurringTx.recurrencePattern) return;
+
+          // Verificar se deve gerar para este mês
+          if (!shouldGenerateForMonth(recurringTx.recurrencePattern, monthStr)) {
+            return;
+          }
+
+          // Gerar transações para o mês
+          const generatedTransactions = generateRecurringTransactionsForMonth(
+            recurringTx,
+            monthStr,
+            recurringTx.id
+          );
+
+          // Adicionar cada transação gerada ao dia correspondente
+          generatedTransactions.forEach((transaction) => {
+            const day = new Date(transaction.createdAt).getDate();
+
+            // Verificar se a transação já existe (evitar duplicatas)
+            const dayEntry = monthData.entries.find((e) => e.day === day);
+            const alreadyExists = dayEntry?.transactions?.some(
+              (t) => t.id === transaction.id
+            );
+
+            if (!alreadyExists) {
+              // Adicionar a transação ao dia
+              const updatedEntries = monthData.entries.map((entry) => {
+                if (entry.day === day) {
+                  const updatedTransactions = [...(entry.transactions || []), transaction];
+                  const totals = calculateTotalsFromTransactions(updatedTransactions);
+
+                  return {
+                    ...entry,
+                    transactions: updatedTransactions,
+                    entrada: totals.entrada,
+                    saida: totals.saida,
+                    diario: totals.diario,
+                  };
+                }
+                return entry;
+              });
+
+              // Recalcular saldos
+              const saldoInicial = get().getSaldoInicial(monthStr);
+              const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
+              const totals = calculateMonthTotals(entriesWithSaldo);
+
+              // Atualizar o estado
+              set((state) => ({
+                months: {
+                  ...state.months,
+                  [monthStr]: {
+                    ...monthData,
+                    entries: entriesWithSaldo,
+                    totals,
+                  },
+                },
+              }));
+
+              transactionsAdded++;
+            }
+          });
+        });
+
+        console.log(`[CashFlow] ✅ ${transactionsAdded} transações recorrentes geradas para ${monthStr}`);
+      },
+
+      getRecurringTransactions: () => {
+        const state = get();
+        return Object.values(state.recurringTransactions);
+      },
+
+      updateRecurringTransaction: (recurringId: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt'>>) => {
+        console.log(`[CashFlow] 📅 Atualizando transação recorrente ${recurringId}...`);
+
+        const state = get();
+        const recurringTx = state.recurringTransactions[recurringId];
+
+        if (!recurringTx) {
+          console.error(`[CashFlow] Transação recorrente ${recurringId} não encontrada!`);
+          return;
+        }
+
+        // Atualizar o template da transação recorrente
+        const updatedRecurringTx = {
+          ...recurringTx,
+          ...updates,
+        };
+
+        set((state) => ({
+          recurringTransactions: {
+            ...state.recurringTransactions,
+            [recurringId]: updatedRecurringTx,
+          },
+        }));
+
+        // Regenerar todas as ocorrências nos meses existentes
+        const allMonths = Object.keys(get().months);
+
+        // Primeiro, remover todas as ocorrências antigas desta recorrência
+        allMonths.forEach((monthStr) => {
+          const monthData = get().months[monthStr];
+          if (!monthData) return;
+
+          const updatedEntries = monthData.entries.map((entry) => {
+            const filteredTransactions = (entry.transactions || []).filter(
+              (t) => t.parentRecurringId !== recurringId
+            );
+
+            if (filteredTransactions.length !== entry.transactions?.length) {
+              const totals = calculateTotalsFromTransactions(filteredTransactions);
+              return {
+                ...entry,
+                transactions: filteredTransactions,
+                entrada: totals.entrada,
+                saida: totals.saida,
+                diario: totals.diario,
+              };
+            }
+
+            return entry;
+          });
+
+          // Recalcular saldos
+          const saldoInicial = get().getSaldoInicial(monthStr);
+          const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
+          const totals = calculateMonthTotals(entriesWithSaldo);
+
+          set((state) => ({
+            months: {
+              ...state.months,
+              [monthStr]: {
+                ...monthData,
+                entries: entriesWithSaldo,
+                totals,
+              },
+            },
+          }));
+        });
+
+        // Regenerar as ocorrências com os novos dados
+        if (updatedRecurringTx.recurrencePattern) {
+          allMonths.forEach((monthStr) => {
+            if (shouldGenerateForMonth(updatedRecurringTx.recurrencePattern!, monthStr)) {
+              get().generateRecurringTransactionsForMonth(monthStr);
+            }
+          });
+        }
+
+        console.log(`[CashFlow] ✅ Transação recorrente ${recurringId} atualizada!`);
+      },
+
+      deleteRecurringTransaction: (recurringId: string) => {
+        console.log(`[CashFlow] 📅 Deletando série completa da transação recorrente ${recurringId}...`);
+
+        const state = get();
+        const recurringTx = state.recurringTransactions[recurringId];
+
+        if (!recurringTx) {
+          console.error(`[CashFlow] Transação recorrente ${recurringId} não encontrada!`);
+          return;
+        }
+
+        // Remover o template da recorrência
+        const newRecurringTransactions = { ...state.recurringTransactions };
+        delete newRecurringTransactions[recurringId];
+
+        set({ recurringTransactions: newRecurringTransactions });
+
+        // Remover todas as ocorrências geradas desta recorrência
+        const allMonths = Object.keys(get().months);
+
+        allMonths.forEach((monthStr) => {
+          const monthData = get().months[monthStr];
+          if (!monthData) return;
+
+          let hasChanges = false;
+          const updatedEntries = monthData.entries.map((entry) => {
+            const filteredTransactions = (entry.transactions || []).filter(
+              (t) => t.parentRecurringId !== recurringId && t.id !== recurringId
+            );
+
+            if (filteredTransactions.length !== entry.transactions?.length) {
+              hasChanges = true;
+              const totals = calculateTotalsFromTransactions(filteredTransactions);
+              return {
+                ...entry,
+                transactions: filteredTransactions,
+                entrada: totals.entrada,
+                saida: totals.saida,
+                diario: totals.diario,
+              };
+            }
+
+            return entry;
+          });
+
+          if (hasChanges) {
+            // Recalcular saldos
+            const saldoInicial = get().getSaldoInicial(monthStr);
+            const entriesWithSaldo = recalculateMonthSaldos(updatedEntries, saldoInicial);
+            const totals = calculateMonthTotals(entriesWithSaldo);
+
+            set((state) => ({
+              months: {
+                ...state.months,
+                [monthStr]: {
+                  ...monthData,
+                  entries: entriesWithSaldo,
+                  totals,
+                },
+              },
+            }));
+          }
+        });
+
+        console.log(`[CashFlow] ✅ Série completa da transação recorrente ${recurringId} deletada!`);
+      },
+
+      deleteRecurringOccurrence: (monthStr: string, day: number, transactionId: string) => {
+        console.log(`[CashFlow] Deletando ocorrência única ${transactionId} no dia ${day}/${monthStr}`);
+
+        // Esta função simplesmente chama deleteTransaction, que já remove uma ocorrência específica
+        get().deleteTransaction(monthStr, day, transactionId);
+      },
     }),
     {
       name: 'cashflow-storage',
-      version: 6, // 🔧 VERSÃO 6 - Adiciona suporte a transações individuais por dia
+      version: 7, // 🔧 VERSÃO 7 - Adiciona suporte a transações recorrentes
       migrate: (persistedState: any) => {
-        // Migração da versão 5 ou anterior
+        // Migração da versão anterior
         if (persistedState?.months) {
           const LIMITE_ABSURDO = 100000;
           const monthsCorrigidos: Record<string, any> = {};
@@ -637,7 +920,7 @@ export const useCashFlowStore = create<CashFlowStore>()(
                                    Math.abs(monthData.totals?.saldoFinal || 0) > LIMITE_ABSURDO;
 
             if (temValorAbsurdo) {
-              console.log(`[Migration v6] Mês ${monthKey} com valores absurdos será excluído`);
+              console.log(`[Migration v7] Mês ${monthKey} com valores absurdos será excluído`);
               // Não incluir este mês na migração
             } else {
               // Adicionar transactions vazias em todas as entries que não possuem
@@ -653,10 +936,11 @@ export const useCashFlowStore = create<CashFlowStore>()(
             }
           });
 
-          console.log(`[Migration v6] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados com suporte a transações.`);
+          console.log(`[Migration v7] ✅ Migração concluída. ${Object.keys(monthsCorrigidos).length} meses atualizados com suporte a transações recorrentes.`);
 
           return {
             months: monthsCorrigidos,
+            recurringTransactions: persistedState.recurringTransactions || {},
             // currentMonth será inicializado com o valor padrão (mês atual)
           };
         }
